@@ -192,9 +192,10 @@ def verificar_vencimiento(fecha_str):
         return "OK", 999
 
 def procesar_producto_vencido(codigo, fecha_original):
+    """CAMBIO: Ahora se ajusta a 60 días antes de la fecha original"""
     conn = conectar_db()
     fecha_original_dt = datetime.strptime(fecha_original, "%d/%m/%Y")
-    fecha_ajustada = (fecha_original_dt - timedelta(days=30)).strftime("%d/%m/%Y")
+    fecha_ajustada = (fecha_original_dt - timedelta(days=60)).strftime("%d/%m/%Y")
     conn.execute("UPDATE medicamentos SET stock=1, es_vencido=1, fecha_vencimiento=? WHERE codigo=?", 
                 (fecha_ajustada, codigo))
     conn.commit()
@@ -231,7 +232,6 @@ def reducir_stock_seguro(codigo, cantidad):
     return vendida, mensaje
 
 def agregar_stock(codigo, cantidad):
-    """Función NUEVA: suma cantidad al stock existente"""
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
     
@@ -309,7 +309,7 @@ def mostrar_panel_principal():
     with tab1:
         st.header("💊 Inventario de Medicamentos")
         
-        # NUEVA OPCIÓN: Actualizar stock manualmente
+        # Actualizar stock manualmente
         with st.expander("✏️ Actualizar Stock Manualmente", expanded=False):
             col1, col2 = st.columns(2)
             with col1:
@@ -385,7 +385,7 @@ def mostrar_panel_principal():
                             st.error(f"❌ VENCIDO el {m['fecha_vencimiento']}")
                             if st.button("🗑️ Procesar vencido (dejar 1 unidad)", key=f"venc_{m['codigo']}"):
                                 nueva_fecha = procesar_producto_vencido(m['codigo'], m['fecha_vencimiento'])
-                                st.success(f"✅ Procesado: stock reducido a 1 unidad. Fecha ajustada a {nueva_fecha}")
+                                st.success(f"✅ Procesado: stock reducido a 1 unidad. Fecha ajustada a {nueva_fecha} (60 días antes del vencimiento original)")
                                 st.rerun()
                         elif m['es_vencido'] == 1:
                             st.warning("⚠️ Producto vencido procesado (1 unidad de registro)")
@@ -533,7 +533,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 else:
                     st.info("📭 No hay proveedores registrados")
         
-        # ===== NUEVA OPCIÓN: RECIBIR MERCANCÍA =====
+        # Recibir mercancía
         st.markdown("### 📥 Recibir Mercancía de Proveedor")
         st.info("Esta opción genera la factura de pago **Y actualiza automáticamente el stock** del inventario.")
         
@@ -594,108 +594,4 @@ Valor unit.: ${val_compra:.2f}
 ----------------------------------------
 TOTAL A PAGAR: ${total_compra:.2f}
 ========================================
-Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-========================================"""
-                    st.markdown('<div class="factura">', unsafe_allow_html=True)
-                    st.text(factura)
-                    st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    st.error(f"❌ Error: {msg_stock}")
-        else:
-            st.warning("⚠️ Agrega primero proveedores y medicamentos")
-        
-        # Historial de compras
-        conn = conectar_db()
-        compras = conn.execute("""
-            SELECT c.*, p.nombre as prov_nombre, m.nombre as med_nombre 
-            FROM compras_proveedores c
-            JOIN proveedores p ON c.id_proveedor = p.id_proveedor
-            JOIN medicamentos m ON c.codigo_medicamento = m.codigo
-            ORDER BY c.id_compra DESC
-        """).fetchall()
-        conn.close()
-        
-        if compras:
-            with st.expander("📜 Historial de Compras a Proveedores"):
-                for c in compras:
-                    st.code(f"ID: {c['id_compra']} | {c['prov_nombre']} | {c['med_nombre']} | Cant: {c['cantidad']} | Total: ${c['total']:.2f} | {c['fecha']}")
-
-    # ==================== PESTAÑA 4: VENTAS ====================
-    with tab4:
-        st.header("💸 Realizar Venta")
-        
-        venta_codigo = st.text_input("Código del Medicamento:", key="cod_venta")
-        venta_cantidad = st.number_input("Cantidad a vender:", min_value=1, step=1, key="cant_venta")
-        
-        if st.button("🛒 Realizar Venta", type="primary", key="btn_vender"):
-            try:
-                if not venta_codigo.strip():
-                    raise ValueError("Ingresa el código del medicamento")
-                
-                conn = conectar_db()
-                med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (venta_codigo.strip(),)).fetchone()
-                
-                if not med:
-                    raise ValueError("Medicamento no encontrado")
-                
-                est, _ = verificar_vencimiento(med['fecha_vencimiento'])
-                
-                if est == "VENCIDO":
-                    st.error("❌ No se puede vender un medicamento vencido!")
-                else:
-                    vendida, mensaje = reducir_stock_seguro(med['codigo'], venta_cantidad)
-                    
-                    if vendida == 0:
-                        st.error(f"🔴 {mensaje}")
-                    else:
-                        total = vendida * med['precio']
-                        conn.execute("INSERT INTO ventas (codigo_medicamento, cantidad, total, fecha) VALUES (?,?,?,?)",
-                                    (med['codigo'], vendida, total, datetime.now().strftime('%d/%m/%Y %H:%M')))
-                        conn.commit()
-                        
-                        if "⚠️" in mensaje:
-                            st.warning(mensaje)
-                        
-                        st.success(f"✅ Venta exitosa: {vendida} unidades")
-                        
-                        factura = f"""
-========================================
-           🧾 FACTURA DE VENTA
-========================================
-Medicamento  : {med['nombre']}
-Categoría    : {med['categoria']}
-Cantidad     : {vendida}
-Precio unit. : ${med['precio']:.2f}
-----------------------------------------
-Total a pagar: ${total:.2f}
-========================================
-Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-========================================"""
-                        st.markdown('<div class="factura">', unsafe_allow_html=True)
-                        st.text(factura)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                conn.close()
-                
-            except ValueError as e:
-                st.error(f"❌ Error: {e}")
-        
-        # Historial de ventas
-        conn = conectar_db()
-        ventas = conn.execute("SELECT * FROM ventas ORDER BY id_venta DESC").fetchall()
-        conn.close()
-        
-        if ventas:
-            with st.expander("📜 Historial de Ventas"):
-                total_ventas = sum(v['total'] for v in ventas)
-                st.markdown(f"**Total de ventas: {len(ventas)}**")
-                st.markdown(f"**Ingresos totales: ${total_ventas:.2f}**")
-                st.markdown("---")
-                for v in ventas:
-                    st.text(f"ID: {v['id_venta']} | Código: {v['codigo_medicamento']} | Cantidad: {v['cantidad']} | Total: ${v['total']:.2f} | Fecha: {v['fecha']}")
-                    st.markdown("---")
-
-# ========================= EJECUCIÓN PRINCIPAL =========================
-if not st.session_state.autenticado:
-    mostrar_login()
-else:
-    mostrar_panel_principal()
+Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')
