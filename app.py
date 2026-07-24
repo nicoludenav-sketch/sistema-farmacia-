@@ -1,5 +1,56 @@
 import streamlit as st
 
+# ========================= ESTILOS PERSONALIZADOS (FONDO Y DISEÑO) =========================
+def agregar_estilos():
+    st.markdown("""
+    <style>
+    /* Fondo de la página: gradiente suave + imagen de fondo */
+    .stApp {
+        background: linear-gradient(135deg, #e0f7fa 0%, #f3e5f5 100%);
+        background-image: url("https://images.unsplash.com/photo-1587854692152-cbe660dbde88?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80");
+        background-size: cover;
+        background-attachment: fixed;
+        background-position: center;
+    }
+
+    /* Contenedores semi-transparentes para que se lea bien el texto */
+    .stExpander, .stCode, .stAlert {
+        background-color: rgba(255, 255, 255, 0.92) !important;
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    /* Títulos con sombra para resaltar */
+    h1, h2, h3 {
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        color: #1a237e;
+    }
+
+    /* Botones más bonitos */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Llamamos a la función para aplicar los estilos
+agregar_estilos()
+
+# ========================= DICCIONARIO DE IMÁGENES DE MEDICAMENTOS =========================
+# URLs de imágenes verificadas para los medicamentos iniciales
+IMAGENES_MEDICAMENTOS = {
+    "M001": "https://p16-cc-image-search-sign-sg.ibyteimg.com/tos-alisg-i-h9hire4aei-sg/image/37a9aeb92e99956a65d5c8d3b4de3d1c~tplv-h9hire4aei-image.jpeg?rk3s=feb11e32&x-expires=1800428676&x-signature=Bj6J3QWyB2a5Om27g%2BDYB1Iozyw%3D",  # Paracetamol
+    "M002": "https://p16-cc-image-search-sign-sg.ibyteimg.com/tos-alisg-i-h9hire4aei-sg/image/9db8472ed5a1a5211a10cc468236810d~tplv-h9hire4aei-image.jpeg?rk3s=feb11e32&x-expires=1800428676&x-signature=gm68SH5Zb%2F%2BOHKIdCCJlDxAyjhU%3D",  # Ibuprofeno
+    "M003": "https://p16-cc-image-search-sign-sg.ibyteimg.com/tos-alisg-i-h9hire4aei-sg/image/2578bde20188e777e3e79e76056a0ca8~tplv-h9hire4aei-image.jpeg?rk3s=feb11e32&x-expires=1800428676&x-signature=v5b5%2B7cc7IDOf8k%2BlIGXNZ1tydg%3D",  # Amoxicilina
+    "M004": "https://p19-cc-image-search-sign-sg.ibyteimg.com/tos-alisg-i-h9hire4aei-sg/img/63817e416d879e82b143a87f861ea3b1~tplv-h9hire4aei-image.jpeg?rk3s=feb11e32&x-expires=1800428676&x-signature=TuGgW0wUfzu3dTTwzFoZ1RuaxhM%3D"   # Omeprazol
+}
+
 # ========================= CLASES =========================
 
 class Usuario:
@@ -168,7 +219,16 @@ with tab1:
                     med = st.session_state.inventario.buscar_medicamento(cod_buscar.strip())
                     if med:
                         st.success("✅ Encontrado:")
-                        st.code(str(med))
+                        # Mostrar imagen si existe, sino un placeholder
+                        col_img, col_info = st.columns([1, 2])
+                        with col_img:
+                            if med.get_codigo() in IMAGENES_MEDICAMENTOS:
+                                st.image(IMAGENES_MEDICAMENTOS[med.get_codigo()], width=150)
+                            else:
+                                st.image("https://cdn-icons-png.flaticon.com/512/2972/2972183.png", width=150)
+                        with col_info:
+                            st.code(str(med))
+                            st.write(f"📅 Vencimiento: {med.get_fecha_vencimiento()}")
                         alerta = med.verificar_stock()
                         if alerta:
                             st.warning(alerta)
@@ -190,7 +250,16 @@ with tab1:
             st.info("📭 Inventario vacío")
         else:
             for m in st.session_state.inventario.lista_medicamentos:
-                st.code(str(m))
+                col_img, col_info = st.columns([1, 3])
+                with col_img:
+                    if m.get_codigo() in IMAGENES_MEDICAMENTOS:
+                        st.image(IMAGENES_MEDICAMENTOS[m.get_codigo()], width=100)
+                    else:
+                        st.image("https://cdn-icons-png.flaticon.com/512/2972/2972183.png", width=100)
+                with col_info:
+                    st.code(str(m))
+                    st.write(f"📅 Vence: {m.get_fecha_vencimiento()}")
+                st.markdown("---")
 
 # ==================== PESTAÑA 2: USUARIOS ====================
 with tab2:
@@ -278,10 +347,19 @@ with tab4:
                 venta = Venta(len(st.session_state.ventas)+1000, med, venta_cantidad)
                 if venta.registrar_venta():
                     st.session_state.ventas.append(venta)
-                    # Mostrar factura
+                    # Mostrar factura con imagen del medicamento
                     st.success("✅ Venta realizada correctamente")
                     st.markdown("### 🧾 Factura")
-                    st.code(f"""========================================
+                    
+                    col_img, col_fact = st.columns([1, 2])
+                    with col_img:
+                        if med.get_codigo() in IMAGENES_MEDICAMENTOS:
+                            st.image(IMAGENES_MEDICAMENTOS[med.get_codigo()], width=120)
+                        else:
+                            st.image("https://cdn-icons-png.flaticon.com/512/2972/2972183.png", width=120)
+                    
+                    with col_fact:
+                        st.code(f"""========================================
            FACTURA
 ========================================
 N° Venta     : {venta.numero_venta}
@@ -289,6 +367,7 @@ Medicamento  : {venta.medicamento.get_nombre()}
 Cantidad     : {venta.cantidad}
 Total a pagar: ${venta.total:.2f}
 ========================================""")
+                    
                     alerta = med.verificar_stock()
                     if alerta:
                         st.warning(alerta)
