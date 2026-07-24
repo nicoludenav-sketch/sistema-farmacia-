@@ -51,6 +51,18 @@ def crear_tablas():
         FOREIGN KEY (codigo_medicamento) REFERENCES medicamentos(codigo)
     )''')
     
+    c.execute('''CREATE TABLE IF NOT EXISTS compras_proveedores (
+        id_compra INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_proveedor INTEGER NOT NULL,
+        codigo_medicamento TEXT NOT NULL,
+        cantidad INTEGER NOT NULL,
+        valor_unitario REAL NOT NULL,
+        total REAL NOT NULL,
+        fecha TEXT NOT NULL,
+        FOREIGN KEY (id_proveedor) REFERENCES proveedores(id_proveedor),
+        FOREIGN KEY (codigo_medicamento) REFERENCES medicamentos(codigo)
+    )''')
+    
     conn.commit()
     conn.close()
 
@@ -58,7 +70,6 @@ def inicializar_datos():
     conn = conectar_db()
     c = conn.cursor()
     
-    # Verificar si ya hay medicamentos
     c.execute("SELECT COUNT(*) FROM medicamentos")
     if c.fetchone()[0] == 0:
         medicamentos = [
@@ -85,23 +96,21 @@ def inicializar_datos():
         ]
         c.executemany("INSERT INTO medicamentos VALUES (?,?,?,?,?,?,0)", medicamentos)
     
-    # Verificar si ya hay proveedores
     c.execute("SELECT COUNT(*) FROM proveedores")
     if c.fetchone()[0] == 0:
         proveedores = [
             ("Juan Ruiz", "Av. Principal 123", "0991234567", "Farmacéutica del Sur"),
             ("María Torres", "Calle Central 456", "0987654321", "Laboratorios Andinos")
         ]
-        c.executemany("INSERT INTO proveedores (nombre, direccion, telefono, empresa) VALUES (?,?,?,?)", proveedores)
+        c.executemany("INSERT INTO proveedores VALUES (NULL,?,?,?,?)", proveedores)
     
     conn.commit()
     conn.close()
 
-# Inicializar base de datos
 crear_tablas()
 inicializar_datos()
 
-# ========================= ESTILOS PERSONALIZADOS =========================
+# ========================= ESTILOS =========================
 def agregar_estilos():
     st.markdown("""
     <style>
@@ -146,7 +155,7 @@ def agregar_estilos():
 
 agregar_estilos()
 
-# ========================= DICCIONARIO DE IMÁGENES =========================
+# ========================= IMÁGENES =========================
 IMAGENES_MEDICAMENTOS = {
     "M001": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=300&h=300&fit=crop",
     "M002": "https://images.unsplash.com/photo-1550572017-edd951b55104?w=300&h=300&fit=crop",
@@ -176,16 +185,13 @@ def verificar_vencimiento(fecha_str):
         fecha_venc = datetime.strptime(fecha_str, "%d/%m/%Y")
         hoy = datetime.now()
         dias_restantes = (fecha_venc - hoy).days
-        if dias_restantes < 0:
-            return "VENCIDO", dias_restantes
-        elif dias_restantes <= 30:
-            return "PROXIMO", dias_restantes
+        if dias_restantes < 0: return "VENCIDO", dias_restantes
+        elif dias_restantes <= 30: return "PROXIMO", dias_restantes
         return "OK", dias_restantes
     except:
         return "OK", 999
 
 def procesar_producto_vencido(codigo, fecha_original):
-    """Regla: producto vencido -> stock = 1, fecha = 30 días antes de la fecha original"""
     conn = conectar_db()
     fecha_original_dt = datetime.strptime(fecha_original, "%d/%m/%Y")
     fecha_ajustada = (fecha_original_dt - timedelta(days=30)).strftime("%d/%m/%Y")
@@ -196,21 +202,19 @@ def procesar_producto_vencido(codigo, fecha_original):
     return fecha_ajustada
 
 def reducir_stock_seguro(codigo, cantidad):
-    """Regla: stock nunca llega a 0, siempre queda al menos 1 unidad"""
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
     
     if not med:
+        conn.close()
         return 0, "No encontrado"
     
     stock_actual = med['stock']
     
-    # Si solo queda 1 unidad, no se puede vender
     if stock_actual <= 1:
         conn.close()
         return 0, "ÚLTIMA UNIDAD: no se puede vender, se mantiene como registro"
     
-    # Calcular cuánto se puede vender (siempre dejar 1)
     max_vender = stock_actual - 1
     if cantidad > max_vender:
         vendida = max_vender
@@ -226,7 +230,27 @@ def reducir_stock_seguro(codigo, cantidad):
     
     return vendida, mensaje
 
-# ========================= SISTEMA DE LOGIN =========================
+def agregar_stock(codigo, cantidad):
+    """Función NUEVA: suma cantidad al stock existente"""
+    conn = conectar_db()
+    med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
+    
+    if not med:
+        conn.close()
+        return False, "Medicamento no encontrado"
+    
+    if cantidad <= 0:
+        conn.close()
+        return False, "La cantidad debe ser mayor a cero"
+    
+    nuevo_stock = med['stock'] + cantidad
+    conn.execute("UPDATE medicamentos SET stock=?, es_vencido=0 WHERE codigo=?", (nuevo_stock, codigo))
+    conn.commit()
+    conn.close()
+    
+    return True, f"✅ Stock actualizado: {med['stock']} → {nuevo_stock} unidades"
+
+# ========================= LOGIN =========================
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario_actual = None
@@ -234,15 +258,12 @@ if 'autenticado' not in st.session_state:
 def mostrar_login():
     st.markdown("<h1 style='text-align:center; margin-top:100px;'>🧪 SISTEMA DE FARMACIA</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>Iniciar Sesión</h3>", unsafe_allow_html=True)
-    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
             usuario = st.text_input("👤 Usuario:")
             contrasena = st.text_input("🔒 Contraseña:", type="password")
-            submit = st.form_submit_button("✅ Iniciar Sesión")
-            
-            if submit:
+            if st.form_submit_button("✅ Iniciar Sesión"):
                 if usuario == "sistema" and contrasena == "12341":
                     st.session_state.autenticado = True
                     st.session_state.usuario_actual = "sistema"
@@ -277,10 +298,8 @@ def mostrar_panel_principal():
     if alertas:
         st.subheader("⚠️ Alertas del Sistema")
         for t, txt in alertas:
-            if t == "error":
-                st.error(txt)
-            else:
-                st.warning(txt)
+            if t == "error": st.error(txt)
+            else: st.warning(txt)
     
     st.markdown("---")
     
@@ -289,6 +308,28 @@ def mostrar_panel_principal():
     # ==================== PESTAÑA 1: INVENTARIO ====================
     with tab1:
         st.header("💊 Inventario de Medicamentos")
+        
+        # NUEVA OPCIÓN: Actualizar stock manualmente
+        with st.expander("✏️ Actualizar Stock Manualmente", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                conn = conectar_db()
+                meds = conn.execute("SELECT codigo, nombre, stock FROM medicamentos ORDER BY nombre").fetchall()
+                conn.close()
+                med_seleccionado = st.selectbox("Seleccionar medicamento:",
+                    [f"{m['codigo']} - {m['nombre']} (Stock actual: {m['stock']})" for m in meds],
+                    key="stock_manual")
+            with col2:
+                cantidad_agregar = st.number_input("Cantidad a agregar:", min_value=1, step=1, key="cant_stock")
+            
+            if st.button("📈 Actualizar Stock", key="btn_stock_manual"):
+                codigo = med_seleccionado.split(" - ")[0]
+                exito, mensaje = agregar_stock(codigo, cantidad_agregar)
+                if exito:
+                    st.success(mensaje)
+                    st.rerun()
+                else:
+                    st.error(mensaje)
         
         # Agregar medicamento
         with st.expander("➕ Agregar Nuevo Medicamento", expanded=False):
@@ -340,7 +381,6 @@ def mostrar_panel_principal():
                         
                         est, _ = verificar_vencimiento(m['fecha_vencimiento'])
                         
-                        # Producto vencido: botón para procesar
                         if est == "VENCIDO" and m['es_vencido'] == 0:
                             st.error(f"❌ VENCIDO el {m['fecha_vencimiento']}")
                             if st.button("🗑️ Procesar vencido (dejar 1 unidad)", key=f"venc_{m['codigo']}"):
@@ -415,7 +455,6 @@ def mostrar_panel_principal():
                 else:
                     st.info("📭 No hay usuarios registrados")
         
-        # Lista de usuarios y comprobantes
         st.markdown("### 📋 Lista de Usuarios y Comprobantes de Pago")
         conn = conectar_db()
         usuarios = conn.execute("SELECT * FROM usuarios").fetchall()
@@ -464,7 +503,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                         if not nom_p or not emp_p:
                             raise ValueError("Nombre y empresa son obligatorios")
                         conn = conectar_db()
-                        conn.execute("INSERT INTO proveedores (nombre, direccion, telefono, empresa) VALUES (?,?,?,?)",
+                        conn.execute("INSERT INTO proveedores VALUES (NULL,?,?,?,?)",
                                     (nom_p.strip(), dir_p.strip(), tel_p.strip(), emp_p.strip()))
                         conn.commit()
                         conn.close()
@@ -494,61 +533,92 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 else:
                     st.info("📭 No hay proveedores registrados")
         
-        # Generar factura a proveedor
-        st.markdown("### 🧾 Generar Factura de Pago a Proveedor")
+        # ===== NUEVA OPCIÓN: RECIBIR MERCANCÍA =====
+        st.markdown("### 📥 Recibir Mercancía de Proveedor")
+        st.info("Esta opción genera la factura de pago **Y actualiza automáticamente el stock** del inventario.")
+        
         conn = conectar_db()
         proveedores = conn.execute("SELECT * FROM proveedores").fetchall()
+        meds = conn.execute("SELECT codigo, nombre, stock FROM medicamentos ORDER BY nombre").fetchall()
         conn.close()
         
-        if proveedores:
-            prov_seleccionado = st.selectbox("Seleccionar proveedor:",
-                [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in proveedores],
-                key="prov_factura")
+        if proveedores and meds:
+            col_a, col_b = st.columns(2)
+            with col_a:
+                prov_compra = st.selectbox("Proveedor:",
+                    [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in proveedores],
+                    key="prov_compra")
+                med_compra = st.selectbox("Medicamento recibido:",
+                    [f"{m['codigo']} - {m['nombre']} (Stock actual: {m['stock']})" for m in meds],
+                    key="med_compra")
+            with col_b:
+                cant_compra = st.number_input("Cantidad recibida:", min_value=1, step=1, key="cant_compra")
+                val_compra = st.number_input("Valor unitario de compra ($):", min_value=0.0, step=0.01, key="val_compra")
             
-            med_codigo = st.text_input("Código del medicamento suministrado:", key="med_prov")
-            cantidad_prov = st.number_input("Cantidad suministrada:", min_value=1, step=1, key="cant_prov")
-            valor_unit = st.number_input("Valor unitario ($):", min_value=0.0, step=0.01, key="val_unit")
-            
-            if st.button("📄 Generar Factura", key="btn_gen_factura"):
-                id_prov = int(prov_seleccionado.split(" - ")[0])
-                conn = conectar_db()
-                p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
-                m = conn.execute("SELECT nombre FROM medicamentos WHERE codigo=?", (med_codigo.strip(),)).fetchone()
-                conn.close()
+            if st.button("📥 Registrar Compra y Actualizar Stock", type="primary", key="btn_compra"):
+                id_prov = int(prov_compra.split(" - ")[0])
+                cod_med = med_compra.split(" - ")[0]
+                total_compra = cant_compra * val_compra
                 
-                nombre_med = m['nombre'] if m else med_codigo.strip()
-                total = cantidad_prov * valor_unit
+                # 1. Actualizar stock
+                exito, msg_stock = agregar_stock(cod_med, cant_compra)
                 
-                factura = f"""
+                if exito:
+                    # 2. Registrar la compra
+                    conn = conectar_db()
+                    conn.execute("""INSERT INTO compras_proveedores 
+                        (id_proveedor, codigo_medicamento, cantidad, valor_unitario, total, fecha)
+                        VALUES (?,?,?,?,?,?)""",
+                        (id_prov, cod_med, cant_compra, val_compra, total_compra, 
+                         datetime.now().strftime('%d/%m/%Y %H:%M')))
+                    conn.commit()
+                    
+                    # 3. Obtener datos para la factura
+                    p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
+                    m = conn.execute("SELECT nombre FROM medicamentos WHERE codigo=?", (cod_med,)).fetchone()
+                    conn.close()
+                    
+                    st.success(f"✅ Compra registrada! {msg_stock}")
+                    
+                    factura = f"""
 ========================================
-          FACTURA DE PROVEEDOR
+     FACTURA DE COMPRA A PROVEEDOR
 ========================================
 Proveedor: {p['nombre']}
 Empresa  : {p['empresa']}
 Teléfono : {p['telefono']}
-Dirección: {p['direccion']}
 ----------------------------------------
-Medicamento: {nombre_med}
-Cantidad   : {cantidad_prov} unidades
-Valor unit.: ${valor_unit:.2f}
+Medicamento: {m['nombre']}
+Cantidad   : {cant_compra} unidades
+Valor unit.: ${val_compra:.2f}
 ----------------------------------------
-TOTAL A PAGAR: ${total:.2f}
+TOTAL A PAGAR: ${total_compra:.2f}
 ========================================
 Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 ========================================"""
-                st.markdown('<div class="factura">', unsafe_allow_html=True)
-                st.text(factura)
-                st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="factura">', unsafe_allow_html=True)
+                    st.text(factura)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.error(f"❌ Error: {msg_stock}")
         else:
-            st.info("📭 Agrega un proveedor primero")
+            st.warning("⚠️ Agrega primero proveedores y medicamentos")
         
-        # Lista de proveedores
-        st.markdown("### 📋 Lista de Proveedores")
-        if proveedores:
-            for p in proveedores:
-                st.code(f"ID: {p['id_proveedor']} | {p['nombre']} - {p['empresa']} | Tel: {p['telefono']}")
-        else:
-            st.info("📭 No hay proveedores registrados")
+        # Historial de compras
+        conn = conectar_db()
+        compras = conn.execute("""
+            SELECT c.*, p.nombre as prov_nombre, m.nombre as med_nombre 
+            FROM compras_proveedores c
+            JOIN proveedores p ON c.id_proveedor = p.id_proveedor
+            JOIN medicamentos m ON c.codigo_medicamento = m.codigo
+            ORDER BY c.id_compra DESC
+        """).fetchall()
+        conn.close()
+        
+        if compras:
+            with st.expander("📜 Historial de Compras a Proveedores"):
+                for c in compras:
+                    st.code(f"ID: {c['id_compra']} | {c['prov_nombre']} | {c['med_nombre']} | Cant: {c['cantidad']} | Total: ${c['total']:.2f} | {c['fecha']}")
 
     # ==================== PESTAÑA 4: VENTAS ====================
     with tab4:
@@ -573,7 +643,6 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 if est == "VENCIDO":
                     st.error("❌ No se puede vender un medicamento vencido!")
                 else:
-                    # Usar la función segura que siempre deja 1 unidad
                     vendida, mensaje = reducir_stock_seguro(med['codigo'], venta_cantidad)
                     
                     if vendida == 0:
