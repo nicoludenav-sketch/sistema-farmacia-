@@ -95,6 +95,7 @@ def inicializar_datos():
     conn.commit()
     conn.close()
 
+# Ejecutar base de datos al inicio
 crear_tablas()
 inicializar_datos()
 
@@ -230,8 +231,8 @@ def mostrar_panel():
         st.subheader("Medicamentos")
         with st.expander("➕ Agregar"):
             c1, c2 = st.columns(2)
-            with c1: cod, nom, cat = st.text_input("Código"), st.text_input("Nombre"), st.selectbox("Categoría", ["Analgésicos/Antiinflamatorios", "Antibióticos", "Gastrointestinales", "Aseo e Higiene", "Vitaminas y Antialérgicos"])
-            with c2: pre, sto, fec = st.number_input("Precio", 0.0, step=0.01), st.number_input("Stock", 1, step=1), st.text_input("Vencimiento (DD/MM/AAAA)")
+            with c1: cod = st.text_input("Código"); nom = st.text_input("Nombre"); cat = st.selectbox("Categoría", ["Analgésicos/Antiinflamatorios", "Antibióticos", "Gastrointestinales", "Aseo e Higiene", "Vitaminas y Antialérgicos"])
+            with c2: pre = st.number_input("Precio", 0.0, step=0.01); sto = st.number_input("Stock", 1, step=1); fec = st.text_input("Vencimiento (DD/MM/AAAA)")
             if st.button("Guardar") and cod and nom:
                 try:
                     conn = conectar_db()
@@ -250,6 +251,7 @@ def mostrar_panel():
                     with col_i: st.image(img, width=90)
                     with col_d:
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
+                        st.write(f"📅 Vence: {m['fecha_vencimiento']}")
                         est, _ = verificar_vencimiento(m['fecha_vencimiento'])
                         if est == "VENCIDO" and m['es_vencido'] == 0 and m['stock']>1:
                             if st.button("🗑️ Dejar 1 unidad", key=f"v{m['codigo']}"):
@@ -270,7 +272,7 @@ def mostrar_panel():
         with ca:
             with st.expander("➕ Agregar"):
                 rol = st.selectbox("Rol", ["Administrador", "Empleado"])
-                nom, cor, pas = st.text_input("Nombre"), st.text_input("Correo"), st.text_input("Contraseña", type="password")
+                nom = st.text_input("Nombre"); cor = st.text_input("Correo"); pas = st.text_input("Contraseña", type="password")
                 sue = 1500 if rol=="Administrador" else 500
                 st.info(f"💰 Sueldo: ${sue}")
                 if st.button("Guardar") and nom and "@" in cor and pas:
@@ -313,7 +315,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
         ca, cb = st.columns(2)
         with ca:
             with st.expander("➕ Agregar"):
-                nom, dirr, tel, emp = st.text_input("Nombre"), st.text_input("Dirección"), st.text_input("Teléfono"), st.text_input("Empresa")
+                nom = st.text_input("Nombre"); dirr = st.text_input("Dirección"); tel = st.text_input("Teléfono"); emp = st.text_input("Empresa")
                 if st.button("Guardar") and nom and emp:
                     conn = conectar_db()
                     conn.execute("INSERT INTO proveedores VALUES (NULL,?,?,?,?)", (nom.strip(), dirr.strip(), tel.strip(), emp.strip()))
@@ -337,7 +339,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
         conn.close()
         if prov:
             sel_p = st.selectbox("Proveedor", [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in prov])
-            med_c, cant, val_u = st.text_input("Código Medicamento"), st.number_input("Cantidad", 1, step=1), st.number_input("Valor Unitario", 0.0, step=0.01)
+            med_c = st.text_input("Código Medicamento"); cant = st.number_input("Cantidad", 1, step=1); val_u = st.number_input("Valor Unitario", 0.0, step=0.01)
             if st.button("Generar Factura"):
                 idp = int(sel_p.split(" - ")[0])
                 conn = conectar_db()
@@ -365,11 +367,14 @@ Fecha: {datetime.now().strftime('%d/%m/%Y')}
         if st.button("🛒 Vender", type="primary"):
             conn = conectar_db()
             med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (cod_v.strip(),)).fetchone()
-            if not med: st.error("❌ No encontrado")
-            elif med['stock'] == 1: st.error("🔴 No se puede vender la última unidad de registro")
-            elif verificar_vencimiento(med['fecha_vencimiento'])[0] == "VENCIDO": st.error("❌ Producto vencido")
+            if not med: 
+                st.error("❌ No encontrado")
+            elif med['stock'] == 1: 
+                st.error("🔴 No se puede vender la última unidad de registro")
+            elif verificar_vencimiento(med['fecha_vencimiento'])[0] == "VENCIDO": 
+                st.error("❌ Producto vencido")
             else:
-                # --- REGLA CLAVE: NUNCA QUEDA MENOS DE 1 ---
+                # REGLA: NUNCA QUEDA MENOS DE 1 UNIDAD
                 max_vender = med['stock'] - 1
                 if cant_v > max_vender:
                     st.warning(f"⚠️ Solo se pueden vender {max_vender} unidades (se deja 1 como registro)")
@@ -387,10 +392,13 @@ Fecha: {datetime.now().strftime('%d/%m/%Y')}
            FACTURA DE VENTA
 ========================================
 Medicamento: {med['nombre']}
-Cantidad: {vendida} | Total: ${total:.2f}
+Cantidad: {vendida} unidades
+Total a pagar: ${total:.2f}
+Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 ========================================""")
             conn.close()
 
+# EJECUCIÓN PRINCIPAL
 if not st.session_state.autenticado:
     mostrar_login()
 else:
