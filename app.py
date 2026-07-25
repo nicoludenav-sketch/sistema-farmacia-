@@ -111,22 +111,34 @@ inicializar_datos()
 def agregar_estilos():
     st.markdown("""
     <style>
-    .stApp {
-        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 50%, #ffcc80 100%);
-        background-attachment: fixed;
-    }
-    .stExpander, .stCode, .stAlert, .stTextInput > div, .stNumberInput > div,
-    .stSelectbox > div, [data-testid="stForm"] {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        border-radius: 12px;
-    }
-    .stApp, p, span, label, h1, h2, h3, h4, h5, h6, .stMarkdown, .stCode {
-        color: #0d47a1 !important;
-    }
-    h1, h2, h3 {
-        text-shadow: 1px 1px 2px rgba(255,255,255,0.9);
-        font-weight: bold !important;
-    }
+    .stApp{
+    background:#F5F7FA;
+}
+
+.block-container{
+    padding-top:2rem;
+}
+
+.stButton button{
+    width:100%;
+    border-radius:10px;
+    height:45px;
+    background:#2563EB;
+    color:white;
+    font-weight:bold;
+}
+
+.stButton button:hover{
+    background:#1D4ED8;
+}
+
+[data-testid="stSidebar"]{
+    background:#FFFFFF;
+}
+
+h1,h2,h3{
+    color:#1E293B;
+}
     .stButton > button {
         border-radius: 8px;
         font-weight: bold;
@@ -264,21 +276,76 @@ if 'autenticado' not in st.session_state:
 
 
 def mostrar_login():
-    st.markdown("<h1 style='text-align:center; margin-top:100px;'>🧪 SISTEMA DE FARMACIA</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;'>Iniciar Sesión</h3>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        with st.form("login_form"):
-            usuario = st.text_input("👤 Usuario:")
-            contrasena = st.text_input("🔒 Contraseña:", type="password")
-            if st.form_submit_button("✅ Iniciar Sesión"):
-                if usuario == "sistema" and contrasena == "12341":
-                    st.session_state.autenticado = True
-                    st.session_state.usuario_actual = "sistema"
-                    st.rerun()
-                else:
-                    st.error("❌ Usuario o contraseña incorrectos.")
+    # Centrar el formulario
+    col1, col2, col3 = st.columns([1, 1.2, 1])
 
+    with col2:
+
+        st.markdown(
+            """
+            <div style="
+                background:white;
+                padding:40px;
+                border-radius:20px;
+                box-shadow:0px 6px 20px rgba(0,0,0,0.15);
+                text-align:center;
+            ">
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Logo
+        st.image(
+            "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
+            width=120,
+        )
+
+        st.markdown(
+            "<h2 style='color:#2563EB;'>Sistema de Gestión</h2>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            "<h4 style='color:gray;'>Farmacia</h4>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        with st.form("login_form"):
+
+            usuario = st.text_input(
+                "Usuario",
+                placeholder="Ingrese su usuario"
+            )
+
+            contrasena = st.text_input(
+                "Contraseña",
+                type="password",
+                placeholder="Ingrese su contraseña"
+            )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            ingresar = st.form_submit_button(
+                "Iniciar sesión",
+                use_container_width=True
+            )
+
+            if ingresar:
+
+                if usuario == "sistema" and contrasena == "12341":
+
+                    st.session_state.autenticado = True
+                    st.session_state.usuario_actual = "Administrador"
+
+                    st.rerun()
+
+                else:
+
+                    st.error("Usuario o contraseña incorrectos.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ========================= PANEL PRINCIPAL =========================
 def mostrar_panel_principal():
