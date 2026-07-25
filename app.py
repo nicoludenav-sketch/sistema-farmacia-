@@ -304,15 +304,15 @@ def mostrar_login():
         # Logo
         st.image("assets/logo.jpg", width=120)
 
-st.markdown(
-    "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
-    unsafe_allow_html=True,
-)
+        st.markdown(
+           "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
+            unsafe_allow_html=True,
+        )
 
-st.markdown(
-    "<p style='color:#64748B; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
-    unsafe_allow_html=True,
-)
+        st.markdown(
+           "<p style='color:#64748B; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
+            unsafe_allow_html=True,
+        )
 
         st.markdown("<br>", unsafe_allow_html=True)
 
