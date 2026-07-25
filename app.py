@@ -302,7 +302,10 @@ def mostrar_login():
         )
 
         # Logo
-        st.image("assets/logo.jpg", width=120)
+        st.image(
+    "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
+    width=120,
+        )
 
         st.markdown(
            "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
