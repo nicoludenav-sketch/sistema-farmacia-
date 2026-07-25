@@ -302,20 +302,17 @@ def mostrar_login():
         )
 
         # Logo
-        st.image(
-            "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
-            width=120,
-        )
+        st.image("assets/logo.jpg", width=120)
 
-        st.markdown(
-            "<h2 style='color:#2563EB;'>Sistema de Gestión</h2>",
-            unsafe_allow_html=True,
-        )
+st.markdown(
+    "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
+    unsafe_allow_html=True,
+)
 
-        st.markdown(
-            "<h4 style='color:gray;'>Farmacia</h4>",
-            unsafe_allow_html=True,
-        )
+st.markdown(
+    "<p style='color:#64748B; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
+    unsafe_allow_html=True,
+)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
