@@ -111,25 +111,13 @@ inicializar_datos()
 def agregar_estilos():
     st.markdown("""
     <style>
-    .stApp{
+.stApp{
     background:#F5F7FA;
 }
 
 .block-container{
     padding-top:2rem;
-}
-
-.stButton button{
-    width:100%;
-    border-radius:10px;
-    height:45px;
-    background:#2563EB;
-    color:white;
-    font-weight:bold;
-}
-
-.stButton button:hover{
-    background:#1D4ED8;
+    padding-bottom:2rem;
 }
 
 [data-testid="stSidebar"]{
@@ -138,20 +126,39 @@ def agregar_estilos():
 
 h1,h2,h3{
     color:#1E293B;
+    font-weight:700;
 }
-    .stButton > button {
-        border-radius: 8px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        background-color: #1976d2 !important;
-        color: white !important;
-        border: none;
-    }
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
-        background-color: #0d47a1 !important;
-    }
+
+.stTextInput input,
+.stNumberInput input,
+.stSelectbox div[data-baseweb="select"]{
+    border-radius:10px;
+}
+
+.stButton > button{
+    width:100%;
+    height:45px;
+    border-radius:10px;
+    background:#2563EB !important;
+    color:white !important;
+    font-weight:bold;
+    border:none;
+    transition:0.3s;
+}
+
+.stButton > button:hover{
+    background:#1D4ED8 !important;
+    transform:translateY(-2px);
+    box-shadow:0 5px 12px rgba(0,0,0,.15);
+}
+
+.factura{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    border:1px solid #E2E8F0;
+    font-family:monospace;
+}
     .factura {
         background: white;
         padding: 20px;
