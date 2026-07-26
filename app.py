@@ -107,7 +107,7 @@ crear_tablas()
 inicializar_datos()
 
 
-# ========================= ESTILOS MEJORADOS =========================
+# ========================= ESTILOS =========================
 def agregar_estilos():
     st.markdown("""
     <style>
@@ -267,21 +267,49 @@ def reducir_stock_seguro(codigo, cantidad):
 
 
 def agregar_stock(codigo, cantidad):
-    """Suma cantidad al stock existente"""
+    """
+    Suma cantidad al stock existente.
+    
+    ✅ NUEVA LÓGICA:
+    - Si el producto ESTÁ VENCIDO: actualiza su fecha de vencimiento a 12 meses
+      a partir de hoy (para que el nuevo lote tenga fecha válida).
+    - Si el producto NO está vencido: mantiene su fecha original intacta.
+    """
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
     if not med:
         conn.close()
-        return False, "Medicamento no encontrado"
+        return False, "Medicamento no encontrado", None
     if cantidad <= 0:
         conn.close()
-        return False, "La cantidad debe ser mayor a cero"
+        return False, "La cantidad debe ser mayor a cero", None
 
-    nuevo_stock = med['stock'] + cantidad
-    conn.execute("UPDATE medicamentos SET stock=?, es_vencido=0 WHERE codigo=?", (nuevo_stock, codigo))
-    conn.commit()
-    conn.close()
-    return True, f"✅ Stock actualizado: {med['stock']} → {nuevo_stock} unidades"
+    stock_anterior = med['stock']
+    nuevo_stock = stock_anterior + cantidad
+    
+    # Verificar si el producto está vencido
+    estado, _ = verificar_vencimiento(med['fecha_vencimiento'])
+    esta_vencido = (estado == "VENCIDO") or (med['es_vencido'] == 1)
+    
+    if esta_vencido:
+        # ✅ SOLO si está vencido: actualizar fecha a 12 meses desde hoy
+        nueva_fecha = (datetime.now() + timedelta(days=365)).strftime("%d/%m/%Y")
+        conn.execute(
+            "UPDATE medicamentos SET stock=?, es_vencido=0, fecha_vencimiento=? WHERE codigo=?",
+            (nuevo_stock, nueva_fecha, codigo)
+        )
+        conn.commit()
+        conn.close()
+        return True, f"✅ Stock actualizado: {stock_anterior} → {nuevo_stock} unidades. Fecha renovada a {nueva_fecha} (producto estaba vencido)", nueva_fecha
+    else:
+        # ❌ No está vencido: mantener fecha original
+        conn.execute(
+            "UPDATE medicamentos SET stock=?, es_vencido=0 WHERE codigo=?",
+            (nuevo_stock, codigo)
+        )
+        conn.commit()
+        conn.close()
+        return True, f"✅ Stock actualizado: {stock_anterior} → {nuevo_stock} unidades. Fecha se mantiene: {med['fecha_vencimiento']}", None
 
 
 # ========================= LOGIN =========================
@@ -392,7 +420,7 @@ def mostrar_panel_principal():
 
             if st.button("📈 Actualizar Stock", key="btn_stock_manual"):
                 codigo = med_seleccionado.split(" - ")[0]
-                exito, mensaje = agregar_stock(codigo, cantidad_agregar)
+                exito, mensaje, _ = agregar_stock(codigo, cantidad_agregar)
                 if exito:
                     st.success(mensaje)
                     st.rerun()
@@ -594,10 +622,10 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
         # ===== RECIBIR MERCANCÍA =====
         st.markdown("### 📥 Recibir Mercancía de Proveedor")
-        st.info("Esta opción genera la factura de pago Y actualiza automáticamente el stock del inventario.")
+        st.info("Esta opción genera la factura de pago Y actualiza automáticamente el stock. **Si el producto está vencido, su fecha se renovará automáticamente.**")
         conn = conectar_db()
         proveedores = conn.execute("SELECT * FROM proveedores").fetchall()
-        meds = conn.execute("SELECT codigo, nombre, stock FROM medicamentos ORDER BY nombre").fetchall()
+        meds = conn.execute("SELECT codigo, nombre, stock, fecha_vencimiento, es_vencido FROM medicamentos ORDER BY nombre").fetchall()
         conn.close()
 
         if proveedores and meds:
@@ -607,9 +635,17 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                     "Proveedor:",
                     [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in proveedores],
                     key="prov_compra")
+                
+                # Mostrar información del medicamento seleccionado
+                opciones_meds = []
+                for m in meds:
+                    estado, _ = verificar_vencimiento(m['fecha_vencimiento'])
+                    vencido = " (VENCIDO)" if (estado == "VENCIDO" or m['es_vencido'] == 1) else ""
+                    opciones_meds.append(f"{m['codigo']} - {m['nombre']} | Stock: {m['stock']} | Vence: {m['fecha_vencimiento']}{vencido}")
+                
                 med_compra = st.selectbox(
                     "Medicamento recibido:",
-                    [f"{m['codigo']} - {m['nombre']} (Stock actual: {m['stock']})" for m in meds],
+                    opciones_meds,
                     key="med_compra")
             with col_b:
                 cant_compra = st.number_input("Cantidad recibida:", min_value=1, step=1, key="cant_compra")
@@ -620,8 +656,10 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 cod_med = med_compra.split(" - ")[0]
                 total_compra = cant_compra * val_compra
 
-                exito, msg_stock = agregar_stock(cod_med, cant_compra)
+                # 1. Actualizar stock (y fecha SOLO si está vencido)
+                exito, msg_stock, nueva_fecha = agregar_stock(cod_med, cant_compra)
                 if exito:
+                    # 2. Registrar la compra
                     conn = conectar_db()
                     conn.execute("""INSERT INTO compras_proveedores
                         (id_proveedor, codigo_medicamento, cantidad, valor_unitario, total, fecha)
@@ -630,11 +668,18 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                                   datetime.now().strftime('%d/%m/%Y %H:%M')))
                     conn.commit()
 
+                    # 3. Obtener datos para la factura
                     p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
-                    m = conn.execute("SELECT nombre FROM medicamentos WHERE codigo=?", (cod_med,)).fetchone()
+                    m = conn.execute("SELECT nombre, fecha_vencimiento FROM medicamentos WHERE codigo=?", (cod_med,)).fetchone()
                     conn.close()
 
                     st.success(f"✅ Compra registrada! {msg_stock}")
+                    
+                    # Mostrar en la factura si se renovó la fecha
+                    info_fecha = f"Fecha vencimiento: {m['fecha_vencimiento']}"
+                    if nueva_fecha:
+                        info_fecha += f" 🔄 (RENNOVADA, estaba vencido)"
+                    
                     factura = f"""
 ========================================
 FACTURA DE COMPRA A PROVEEDOR
@@ -642,9 +687,11 @@ FACTURA DE COMPRA A PROVEEDOR
 Proveedor  : {p['nombre']}
 Empresa    : {p['empresa']}
 Teléfono   : {p['telefono']}
+----------------------------------------
 Medicamento: {m['nombre']}
 Cantidad   : {cant_compra} unidades
 Valor unit.: ${val_compra:.2f}
+{info_fecha}
 ----------------------------------------
 TOTAL A PAGAR: ${total_compra:.2f}
 ========================================
