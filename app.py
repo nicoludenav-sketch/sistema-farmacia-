@@ -248,7 +248,7 @@ agregar_estilos()
 LOGO_SALUDPLUS = "logo_farmacia.png"
 
 IMAGENES_MEDICAMENTOS = {
-    "M001": "https://www.farmaciasmedicity.com/paracetamol-genfar-tabletas-500-mg-caja-con-100-unidades/p?srsltid=AfmBOoryqsHXo9zBmyVEfBTBq0rl2dePN7a7uUDT-JKFp-fYsKAOWJor&w=300&h=300&fit=crop",
+    "M001": "https://farmaenlace.vtexassets.com/arquivos/ids/180844/08642-1.jpg?v=638973636616370000&w=300&h=300&fit=crop",
     "M002": "https://www.farmaciasmedicity.com/ibuprofeno-genfar-tabletas-recubiertas-con-100-unidades/p?srsltid=AfmBOop_YBOShvum9F-cnXtnG57kHz36-Yw9uCu17uzBhb6grfXicIF7&w=300&h=300&fit=crop",
     "M003": "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=300&h=300&fit=crop",
     "M004": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=300&h=300&fit=crop",
