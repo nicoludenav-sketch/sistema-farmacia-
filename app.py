@@ -2,28 +2,15 @@ import streamlit as st
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-# ========================= CONFIGURACIÓN DE PÁGINA =========================
 st.set_page_config(page_title="SaludPlus - Sistema de Farmacia", page_icon="💊", layout="wide")
 
-# ========================= HORA LOCAL (ECUADOR) =========================
 def hora_ecuador():
-    """
-    Devuelve la fecha y hora actual en la zona horaria de Ecuador (UTC-5),
-    sin depender del huso horario configurado en el servidor donde corre la app
-    (por eso antes se veía la hora adelantada, ej. 3am). Ecuador no aplica
-    horario de verano, así que el offset de -5 horas es siempre fijo.
-    Devuelve un datetime "naive" (sin tzinfo) para ser compatible con el resto
-    del código, que ya maneja fechas sin zona horaria.
-    """
     return (datetime.now(timezone.utc) - timedelta(hours=5)).replace(tzinfo=None)
 
-
-# ========================= BASE DE DATOS SQLITE =========================
 def conectar_db():
     conn = sqlite3.connect('farmacia.db')
     conn.row_factory = sqlite3.Row
     return conn
-
 
 def crear_tablas():
     conn = conectar_db()
@@ -74,7 +61,6 @@ def crear_tablas():
     conn.commit()
     conn.close()
 
-
 def inicializar_datos():
     conn = conectar_db()
     c = conn.cursor()
@@ -115,59 +101,41 @@ def inicializar_datos():
     conn.commit()
     conn.close()
 
-
 crear_tablas()
 inicializar_datos()
 
-
-# ========================= ESTILOS =========================
 def agregar_estilos():
     st.markdown("""
     <style>
-    /* ✅ NUEVO: oculta la barra superior de Streamlit y quita el espacio en blanco */
     header[data-testid="stHeader"] {
         height: 0rem;
         visibility: hidden;
     }
-
-    /* FONDO NARANJA SUAVE */
     .stApp {
         background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 50%, #ffcc80 100%);
         background-attachment: fixed;
     }
-
-    /* ✅ NUEVO: padding superior reducido para eliminar el espacio en blanco arriba */
     .block-container {
         padding-top: 0.5rem !important;
         padding-bottom: 2rem;
     }
-
-    /* TEXTOS: AZUL MARINO OSCURO PARA BUEN CONTRASTE */
     .stApp, p, span, label, .stMarkdown, .stCode, li, div {
         color: #0d47a1 !important;
     }
-
-    /* TÍTULOS MÁS OSCUROS Y DESTACADOS */
     h1, h2, h3, h4, h5, h6 {
         color: #0d47a1 !important;
         font-weight: 700 !important;
         text-shadow: 1px 1px 2px rgba(255,255,255,0.9);
     }
-
-    /* CONTENEDORES BLANCOS SEMI-TRANSPARENTES */
     .stExpander, .stAlert, [data-testid="stForm"],
     .stTextInput > div, .stNumberInput > div, .stSelectbox > div {
         background-color: rgba(255, 255, 255, 0.95) !important;
         border-radius: 12px;
     }
-
-    /* INPUTS CON LETRA OSCURA */
     .stTextInput input, .stNumberInput input, .stSelectbox input {
         color: #0d47a1 !important;
         border-radius: 10px;
     }
-
-    /* BOTONES AZULES QUE CONTRASTAN CON NARANJA */
     .stButton > button {
         width: 100%;
         height: 45px;
@@ -178,14 +146,11 @@ def agregar_estilos():
         border: none;
         transition: 0.3s;
     }
-
     .stButton > button:hover {
         background: #0d47a1 !important;
         transform: translateY(-2px);
         box-shadow: 0 5px 12px rgba(25, 118, 210, 0.4);
     }
-
-    /* FACTURAS */
     .factura {
         background: white;
         padding: 20px;
@@ -193,13 +158,9 @@ def agregar_estilos():
         border: 2px dashed #1976d2;
         font-family: monospace;
     }
-
-    /* ALERTAS: ASEGURAR LETRA LEGIBLE */
     .stAlert p, .stAlert div {
         color: #0d47a1 !important;
     }
-
-    /* ETIQUETAS DE ESTADO EN PRODUCTOS */
     .etiqueta {
         display: inline-block;
         padding: 4px 10px;
@@ -237,14 +198,8 @@ def agregar_estilos():
     </style>
     """, unsafe_allow_html=True)
 
-
 agregar_estilos()
 
-# ========================= IMÁGENES =========================
-# ✅ Logo local de SaludPlus (el icono de farmacia).
-# IMPORTANTE: el archivo "logo_farmacia.png" debe subirse al MISMO repositorio
-# / carpeta que este app.py (mismo nombre exacto), para que se vea en cualquier
-# lugar donde despliegues la app (Streamlit Cloud, tu PC, etc.).
 LOGO_SALUDPLUS = "logo_farmacia.png"
 
 IMAGENES_MEDICAMENTOS = {
@@ -270,8 +225,6 @@ IMAGENES_MEDICAMENTOS = {
     "M020": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfwb9EntwpbE-nPSkDnEArcO1cXBtrSvZkvm0_a7QPM9cyzdLuW90mhLVH&s=10&w=300&h=300&fit=crop",
 }
 
-
-# ========================= FUNCIONES AUXILIARES =========================
 def verificar_vencimiento(fecha_str):
     try:
         fecha_venc = datetime.strptime(fecha_str, "%d/%m/%Y")
@@ -285,12 +238,7 @@ def verificar_vencimiento(fecha_str):
     except Exception:
         return "OK", 999
 
-
 def procesar_producto_vencido(codigo, fecha_original):
-    """
-    Deja 1 unidad como registro y ajusta la fecha de vencimiento a
-    60 días ANTES de la fecha original.
-    """
     conn = conectar_db()
     fecha_original_dt = datetime.strptime(fecha_original, "%d/%m/%Y")
     fecha_ajustada = (fecha_original_dt - timedelta(days=60)).strftime("%d/%m/%Y")
@@ -299,7 +247,6 @@ def procesar_producto_vencido(codigo, fecha_original):
     conn.commit()
     conn.close()
     return fecha_ajustada
-
 
 def reducir_stock_seguro(codigo, cantidad):
     conn = conectar_db()
@@ -327,13 +274,7 @@ def reducir_stock_seguro(codigo, cantidad):
     conn.close()
     return vendida, mensaje
 
-
 def agregar_stock(codigo, cantidad):
-    """
-    Suma cantidad al stock existente.
-    - Si el producto ESTÁ VENCIDO: actualiza su fecha a 12 meses desde hoy.
-    - Si el producto NO está vencido: mantiene su fecha original.
-    """
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
     if not med:
@@ -367,18 +308,14 @@ def agregar_stock(codigo, cantidad):
         conn.close()
         return True, f"✅ Stock actualizado: {stock_anterior} → {nuevo_stock} unidades. Fecha se mantiene: {med['fecha_vencimiento']}", None
 
-
-# ========================= LOGIN =========================
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario_actual = None
-
 
 def mostrar_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
 
     with col2:
-        # ✅ Padding superior reducido (antes 30px) para bajar aún más el espacio en blanco
         st.markdown(
             """
             <div style="
@@ -392,22 +329,18 @@ def mostrar_login():
             unsafe_allow_html=True,
         )
 
-        # ✅ Logo de SaludPlus (icono de farmacia) centrado, arriba del nombre
         col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
         with col_logo2:
             st.image(LOGO_SALUDPLUS, width=160)
 
-        # Título SaludPlus
         st.markdown(
            "<h1 style='color:#1976d2; margin-bottom:5px; margin-top:10px;'>SaludPlus</h1>",
             unsafe_allow_html=True,
         )
-        # Eslogan
         st.markdown(
            "<p style='color:#0d47a1; margin-top:0; margin-bottom:5px; font-size:16px; font-weight:500;'>Gestión Rápida y Segura</p>",
             unsafe_allow_html=True,
         )
-        # Dirección
         st.markdown(
            "<p style='color:#64748B; margin-top:0; font-size:14px;'>📍 Machala - El Oro</p>",
             unsafe_allow_html=True,
@@ -429,9 +362,7 @@ def mostrar_login():
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ========================= PANEL PRINCIPAL =========================
 def mostrar_panel_principal():
-    # Título con hora actual (hora de Ecuador)
     hora_actual = hora_ecuador().strftime("%d/%m/%Y %H:%M:%S")
 
     col_titulo, col_hora = st.columns([3, 1])
@@ -445,11 +376,9 @@ def mostrar_panel_principal():
         st.session_state.autenticado = False
         st.rerun()
 
-    # Botón para actualizar inventario (y refrescar la hora en pantalla)
     if st.button("🔄 Actualizar Inventario"):
         st.rerun()
 
-    # Alertas generales
     conn = conectar_db()
     alertas = []
     for m in conn.execute("SELECT * FROM medicamentos").fetchall():
@@ -476,11 +405,9 @@ def mostrar_panel_principal():
 
     tab1, tab2, tab3, tab4 = st.tabs(["💊 Inventario", "👥 Usuarios", "🏢 Proveedores", "💸 Ventas"])
 
-    # ==================== PESTAÑA 1: INVENTARIO ====================
     with tab1:
         st.header("💊 Inventario de Medicamentos")
 
-        # ✅ NUEVO (restaurado): Agregar Nuevo Medicamento
         with st.expander("➕ Agregar Nuevo Medicamento", expanded=False):
             col1, col2 = st.columns(2)
             with col1:
@@ -501,7 +428,7 @@ def mostrar_panel_principal():
                         raise ValueError("Código y nombre son obligatorios")
                     if not fec_add.strip():
                         raise ValueError("La fecha de vencimiento es obligatoria")
-                    datetime.strptime(fec_add.strip(), "%d/%m/%Y")  # valida el formato
+                    datetime.strptime(fec_add.strip(), "%d/%m/%Y")
                     conn = conectar_db()
                     conn.execute("INSERT INTO medicamentos VALUES (?,?,?,?,?,?,0)",
                                  (cod_add.strip(), nom_add.strip(), pre_add, sto_add, fec_add.strip(), cat_add))
@@ -514,7 +441,6 @@ def mostrar_panel_principal():
                 except ValueError as e:
                     st.error(f"❌ Error: la fecha debe tener el formato DD/MM/AAAA. Detalle: {e}")
 
-        # Mostrar inventario por categorías
         st.markdown("### 📋 Inventario por Categorías")
         conn = conectar_db()
         categorias = conn.execute("SELECT DISTINCT categoria FROM medicamentos").fetchall()
@@ -531,7 +457,6 @@ def mostrar_panel_principal():
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
 
-                        # Etiquetas de estado
                         estado, dias = verificar_vencimiento(m['fecha_vencimiento'])
 
                         etiquetas_html = ""
@@ -563,7 +488,6 @@ def mostrar_panel_principal():
                     st.markdown("---")
         conn.close()
 
-    # ==================== PESTAÑA 2: USUARIOS ====================
     with tab2:
         st.header("👥 Gestión de Usuarios")
         col1, col2 = st.columns(2)
@@ -642,7 +566,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
         else:
             st.info("📭 No hay usuarios registrados. Agrega uno arriba.")
 
-    # ==================== PESTAÑA 3: PROVEEDORES ====================
     with tab3:
         st.header("🏢 Gestión de Proveedores")
         col1, col2 = st.columns(2)
@@ -688,7 +611,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
                 else:
                     st.info("📭 No hay proveedores registrados")
 
-        # ===== RECIBIR MERCANCÍA =====
         st.markdown("### 📥 Recibir Mercancía de Proveedor")
         st.info("Esta opción genera la factura de pago Y actualiza automáticamente el stock. **Si el producto está vencido, su fecha se renovará automáticamente.**")
         conn = conectar_db()
@@ -768,7 +690,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
         else:
             st.warning("⚠️ Agrega primero proveedores y medicamentos")
 
-        # Historial de compras
         conn = conectar_db()
         compras = conn.execute("""
             SELECT c.*, p.nombre as prov_nombre, m.nombre as med_nombre
@@ -784,7 +705,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
                 for c in compras:
                     st.code(f"ID: {c['id_compra']} | {c['prov_nombre']} | {c['med_nombre']} | Cant: {c['cantidad']} | Total: ${c['total']:.2f} | {c['fecha']}")
 
-    # ==================== PESTAÑA 4: VENTAS ====================
     with tab4:
         st.header("💸 Realizar Venta")
         venta_codigo = st.text_input("Código del Medicamento:", key="cod_venta")
@@ -837,7 +757,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
             except ValueError as e:
                 st.error(f"❌ Error: {e}")
 
-        # Historial de ventas
         conn = conectar_db()
         ventas = conn.execute("SELECT * FROM ventas ORDER BY id_venta DESC").fetchall()
         conn.close()
@@ -850,8 +769,6 @@ Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
                 for v in ventas:
                     st.text(f"ID: {v['id_venta']} | Código: {v['codigo_medicamento']} | Cantidad: {v['cantidad']} | Total: ${v['total']:.2f} | Fecha: {v['fecha']}")
 
-
-# ========================= EJECUCIÓN PRINCIPAL =========================
 if not st.session_state.autenticado:
     mostrar_login()
 else:
