@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime, timedelta
 
 # ========================= CONFIGURACIÓN DE PÁGINA =========================
-st.set_page_config(page_title="Sistema de Farmacia", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="SaludPlus - Sistema de Farmacia", page_icon="💊", layout="wide")
 
 # ========================= BASE DE DATOS SQLITE =========================
 def conectar_db():
@@ -221,6 +221,9 @@ def agregar_estilos():
 agregar_estilos()
 
 # ========================= IMÁGENES =========================
+# ✅ NUEVO: Imagen del logo de SaludPlus
+LOGO_SALUDPLUS = "https://p-dola-image-sign-sgnontt.byteintl.net/tos-mya-i-uo7y4d541q/ba97016318934afe8d5e4e14c371dfb3.png~tplv-0es2k971ck-24-95-exif:960:960.image?rcl=202607261115309F19D09860981FE7E72F&rk3s=8e244e95&rrcfp=5e034a21&x-orig-authkey=dolaorigin&x-orig-expires=1785122137&x-orig-sign=%2FkCq2Ch72CVfRnDaQPDjtH9m0CE%3D"
+
 IMAGENES_MEDICAMENTOS = {
     "M001": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=300&h=300&fit=crop",
     "M002": "https://images.unsplash.com/photo-1550572017-edd951b55104?w=300&h=300&fit=crop",
@@ -352,11 +355,12 @@ def mostrar_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
 
     with col2:
+        # ✅ NUEVO: Sin espacio en blanco arriba, padding reducido
         st.markdown(
             """
             <div style="
                 background:white;
-                padding:40px;
+                padding:30px 40px 40px 40px;
                 border-radius:20px;
                 box-shadow:0px 6px 20px rgba(0,0,0,0.15);
                 text-align:center;
@@ -365,18 +369,27 @@ def mostrar_login():
             unsafe_allow_html=True,
         )
 
+        # ✅ NUEVO: Logo de SaludPlus centrado
         col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
         with col_logo2:
-            st.image("https://cdn-icons-png.flaticon.com/512/4320/4320337.png", width=120)
+            st.image(LOGO_SALUDPLUS, width=160)
 
+        # ✅ NUEVO: Título SaludPlus
         st.markdown(
-           "<h2 style='color:#1976d2; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
+           "<h1 style='color:#1976d2; margin-bottom:5px; margin-top:10px;'>SaludPlus</h1>",
             unsafe_allow_html=True,
         )
+        # ✅ NUEVO: Eslogan
         st.markdown(
-           "<p style='color:#0d47a1; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
+           "<p style='color:#0d47a1; margin-top:0; margin-bottom:5px; font-size:16px; font-weight:500;'>Gestión Rápida y Segura</p>",
             unsafe_allow_html=True,
         )
+        # ✅ NUEVO: Dirección
+        st.markdown(
+           "<p style='color:#64748B; margin-top:0; font-size:14px;'>📍 Machala - El Oro</p>",
+            unsafe_allow_html=True,
+        )
+
         st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login_form"):
@@ -397,10 +410,22 @@ def mostrar_login():
 
 # ========================= PANEL PRINCIPAL =========================
 def mostrar_panel_principal():
-    st.title("🧪 Sistema de Gestión de Farmacia")
-    st.write(f"👤 Bienvenido: **{st.session_state.usuario_actual}**")
+    # ✅ NUEVO: Título con hora actual
+    hora_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+    col_titulo, col_hora = st.columns([3, 1])
+    with col_titulo:
+        st.title("💊 SaludPlus - Sistema de Gestión")
+        st.write(f"👤 Bienvenido: **{st.session_state.usuario_actual}**")
+    with col_hora:
+        st.markdown(f"<p style='text-align:right; font-size:18px; font-weight:bold;'>🕐 {hora_actual}</p>", unsafe_allow_html=True)
+    
     if st.button("🚪 Cerrar Sesión"):
         st.session_state.autenticado = False
+        st.rerun()
+
+    # ✅ NUEVO: Botón para actualizar inventario (en vez del cuadro)
+    if st.button("🔄 Actualizar Inventario"):
         st.rerun()
 
     # Alertas generales
@@ -434,58 +459,6 @@ def mostrar_panel_principal():
     with tab1:
         st.header("💊 Inventario de Medicamentos")
 
-        # Actualizar stock manualmente
-        with st.expander("✏️ Actualizar Stock Manualmente", expanded=False):
-            col1, col2 = st.columns(2)
-            with col1:
-                conn = conectar_db()
-                meds = conn.execute("SELECT codigo, nombre, stock FROM medicamentos ORDER BY nombre").fetchall()
-                conn.close()
-                med_seleccionado = st.selectbox(
-                    "Seleccionar medicamento:",
-                    [f"{m['codigo']} - {m['nombre']} (Stock actual: {m['stock']})" for m in meds],
-                    key="stock_manual")
-            with col2:
-                cantidad_agregar = st.number_input("Cantidad a agregar:", min_value=1, step=1, key="cant_stock")
-
-            if st.button("📈 Actualizar Stock", key="btn_stock_manual"):
-                codigo = med_seleccionado.split(" - ")[0]
-                exito, mensaje, _ = agregar_stock(codigo, cantidad_agregar)
-                if exito:
-                    st.success(mensaje)
-                    st.rerun()
-                else:
-                    st.error(mensaje)
-
-        # Agregar medicamento
-        with st.expander("➕ Agregar Nuevo Medicamento", expanded=False):
-            col1, col2 = st.columns(2)
-            with col1:
-                cod_add = st.text_input("Código:", placeholder="M021")
-                nom_add = st.text_input("Nombre:")
-                cat_add = st.selectbox("Categoría:",
-                                        ["Analgésicos/Antiinflamatorios", "Antibióticos", "Gastrointestinales",
-                                         "Aseo e Higiene", "Vitaminas y Antialérgicos", "Otro"])
-            with col2:
-                pre_add = st.number_input("Precio ($):", min_value=0.0, step=0.01)
-                sto_add = st.number_input("Stock:", min_value=1, step=1)
-                fec_add = st.text_input("Fecha de vencimiento (DD/MM/AAAA):", placeholder="10/12/2026")
-
-            if st.button("Agregar Medicamento", key="btn_add_inv"):
-                try:
-                    if not cod_add or not nom_add:
-                        raise ValueError("Código y nombre son obligatorios")
-                    conn = conectar_db()
-                    conn.execute("INSERT INTO medicamentos VALUES (?,?,?,?,?,?,0)",
-                                 (cod_add.strip(), nom_add.strip(), pre_add, sto_add, fec_add.strip(), cat_add))
-                    conn.commit()
-                    conn.close()
-                    st.success("✅ Medicamento agregado correctamente.")
-                except sqlite3.IntegrityError:
-                    st.error("❌ Ya existe un medicamento con ese código")
-                except ValueError as e:
-                    st.error(f"❌ Error: {e}")
-
         # Mostrar inventario por categorías
         st.markdown("### 📋 Inventario por Categorías")
         conn = conectar_db()
@@ -503,17 +476,15 @@ def mostrar_panel_principal():
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
                         
-                        # ✅ NUEVO: Calcular estado y días de vencimiento
+                        # ✅ Etiquetas de estado
                         estado, dias = verificar_vencimiento(m['fecha_vencimiento'])
                         
-                        # ✅ NUEVO: Etiquetas de STOCK
                         etiquetas_html = ""
                         if m['stock'] == 1:
                             etiquetas_html += '<span class="etiqueta etiqueta-ultima">🔴 ÚLTIMA UNIDAD</span>'
                         elif m['stock'] <= 5:
                             etiquetas_html += f'<span class="etiqueta etiqueta-stock-bajo">⚠️ STOCK BAJO: {m["stock"]} unid.</span>'
                         
-                        # ✅ NUEVO: Etiquetas de VENCIMIENTO con días
                         if estado == "VENCIDO":
                             etiquetas_html += f'<span class="etiqueta etiqueta-vencido">❌ VENCIDO hace {abs(dias)} días</span>'
                         elif estado == "PROXIMO":
@@ -526,18 +497,12 @@ def mostrar_panel_principal():
                         
                         st.write(f"📅 Vencimiento: {m['fecha_vencimiento']}")
 
-                        if estado == "VENCIDO" and m['es_vencido'] == 0:
-                            st.error(f"❌ VENCIDO el {m['fecha_vencimiento']}")
-                            if st.button("🗑️ Procesar vencido (dejar 1 unidad)", key=f"venc_{m['codigo']}"):
-                                nueva_fecha = procesar_producto_vencido(m['codigo'], m['fecha_vencimiento'])
-                                st.success(f"✅ Procesado: stock reducido a 1 unidad. Fecha ajustada a {nueva_fecha}")
-                                st.rerun()
-                        elif m['es_vencido'] == 1:
-                            st.warning("⚠️ Producto vencido procesado (1 unidad de registro)")
-
+                        # ✅ ELIMINADO: Botón de procesar vencido
+                        
                         if m['stock'] == 1:
                             st.warning("🔴 ÚLTIMA UNIDAD (no se vende, se mantiene como registro)")
 
+                        # ✅ SIGUE: Botón de eliminar definitivamente
                         if st.button("❌ Eliminar definitivamente", key=f"del_{m['codigo']}"):
                             conn.execute("DELETE FROM medicamentos WHERE codigo=?", (m['codigo'],))
                             conn.commit()
@@ -608,7 +573,7 @@ def mostrar_panel_principal():
                     if st.button("💰 Generar Comprobante", key=f"pago_{u['id_usuario']}"):
                         comprobante = f"""
 ========================================
-COMPROBANTE DE PAGO
+COMPROBANTE DE PAGO - SALUDPLUS
 ========================================
 Empleado    : {u['nombre']}
 ID          : {u['id_usuario']}
@@ -728,7 +693,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                     
                     factura = f"""
 ========================================
-FACTURA DE COMPRA A PROVEEDOR
+FACTURA DE COMPRA - SALUDPLUS
 ========================================
 Proveedor  : {p['nombre']}
 Empresa    : {p['empresa']}
@@ -802,7 +767,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
                         factura = f"""
 ========================================
-🧾 FACTURA DE VENTA
+🧾 FACTURA DE VENTA - SALUDPLUS
 ========================================
 Medicamento  : {med['nombre']}
 Categoría    : {med['categoria']}
