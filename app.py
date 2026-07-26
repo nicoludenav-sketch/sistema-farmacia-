@@ -301,14 +301,14 @@ def mostrar_login():
             unsafe_allow_html=True,
         )
 
-      # Logo centrado
-           col1, col2, col3 = st.columns([1, 1, 1])
+                # Logo centrado
+        col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
 
-   with col2:
-         st.image(
-          "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
-          width=120,
-     )
+        with col_logo2:
+            st.image(
+                "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
+                width=120,
+        )
 
         st.markdown(
            "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
