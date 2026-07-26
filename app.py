@@ -1,9 +1,22 @@
 import streamlit as st
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # ========================= CONFIGURACIÓN DE PÁGINA =========================
 st.set_page_config(page_title="SaludPlus - Sistema de Farmacia", page_icon="💊", layout="wide")
+
+# ========================= HORA LOCAL (ECUADOR) =========================
+def hora_ecuador():
+    """
+    Devuelve la fecha y hora actual en la zona horaria de Ecuador (UTC-5),
+    sin depender del huso horario configurado en el servidor donde corre la app
+    (por eso antes se veía la hora adelantada, ej. 3am). Ecuador no aplica
+    horario de verano, así que el offset de -5 horas es siempre fijo.
+    Devuelve un datetime "naive" (sin tzinfo) para ser compatible con el resto
+    del código, que ya maneja fechas sin zona horaria.
+    """
+    return (datetime.now(timezone.utc) - timedelta(hours=5)).replace(tzinfo=None)
+
 
 # ========================= BASE DE DATOS SQLITE =========================
 def conectar_db():
@@ -111,14 +124,21 @@ inicializar_datos()
 def agregar_estilos():
     st.markdown("""
     <style>
+    /* ✅ NUEVO: oculta la barra superior de Streamlit y quita el espacio en blanco */
+    header[data-testid="stHeader"] {
+        height: 0rem;
+        visibility: hidden;
+    }
+
     /* FONDO NARANJA SUAVE */
     .stApp {
         background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 50%, #ffcc80 100%);
         background-attachment: fixed;
     }
 
+    /* ✅ NUEVO: padding superior reducido para eliminar el espacio en blanco arriba */
     .block-container {
-        padding-top: 2rem;
+        padding-top: 0.5rem !important;
         padding-bottom: 2rem;
     }
 
@@ -221,8 +241,9 @@ def agregar_estilos():
 agregar_estilos()
 
 # ========================= IMÁGENES =========================
-# ✅ NUEVO: Imagen del logo de SaludPlus
-LOGO_SALUDPLUS = "https://p-dola-image-sign-sgnontt.byteintl.net/tos-mya-i-uo7y4d541q/ba97016318934afe8d5e4e14c371dfb3.png~tplv-0es2k971ck-24-95-exif:960:960.image?rcl=202607261115309F19D09860981FE7E72F&rk3s=8e244e95&rrcfp=5e034a21&x-orig-authkey=dolaorigin&x-orig-expires=1785122137&x-orig-sign=%2FkCq2Ch72CVfRnDaQPDjtH9m0CE%3D"
+# ✅ NUEVO: Logo local de SaludPlus (el icono de farmacia que subiste).
+# Debe estar en la MISMA carpeta que este archivo .py, con este nombre exacto.
+LOGO_SALUDPLUS = "logo_farmacia.png"
 
 IMAGENES_MEDICAMENTOS = {
     "M001": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=300&h=300&fit=crop",
@@ -252,7 +273,7 @@ IMAGENES_MEDICAMENTOS = {
 def verificar_vencimiento(fecha_str):
     try:
         fecha_venc = datetime.strptime(fecha_str, "%d/%m/%Y")
-        hoy = datetime.now()
+        hoy = hora_ecuador()
         dias_restantes = (fecha_venc - hoy).days
         if dias_restantes < 0:
             return "VENCIDO", dias_restantes
@@ -322,12 +343,12 @@ def agregar_stock(codigo, cantidad):
 
     stock_anterior = med['stock']
     nuevo_stock = stock_anterior + cantidad
-    
+
     estado, _ = verificar_vencimiento(med['fecha_vencimiento'])
     esta_vencido = (estado == "VENCIDO") or (med['es_vencido'] == 1)
-    
+
     if esta_vencido:
-        nueva_fecha = (datetime.now() + timedelta(days=365)).strftime("%d/%m/%Y")
+        nueva_fecha = (hora_ecuador() + timedelta(days=365)).strftime("%d/%m/%Y")
         conn.execute(
             "UPDATE medicamentos SET stock=?, es_vencido=0, fecha_vencimiento=? WHERE codigo=?",
             (nuevo_stock, nueva_fecha, codigo)
@@ -355,12 +376,12 @@ def mostrar_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
 
     with col2:
-        # ✅ NUEVO: Sin espacio en blanco arriba, padding reducido
+        # ✅ Padding superior reducido (antes 30px) para bajar aún más el espacio en blanco
         st.markdown(
             """
             <div style="
                 background:white;
-                padding:30px 40px 40px 40px;
+                padding:15px 40px 30px 40px;
                 border-radius:20px;
                 box-shadow:0px 6px 20px rgba(0,0,0,0.15);
                 text-align:center;
@@ -369,28 +390,26 @@ def mostrar_login():
             unsafe_allow_html=True,
         )
 
-        # ✅ NUEVO: Logo de SaludPlus centrado
+        # ✅ Logo de SaludPlus (icono de farmacia) centrado, arriba del nombre
         col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
         with col_logo2:
             st.image(LOGO_SALUDPLUS, width=160)
 
-        # ✅ NUEVO: Título SaludPlus
+        # Título SaludPlus
         st.markdown(
            "<h1 style='color:#1976d2; margin-bottom:5px; margin-top:10px;'>SaludPlus</h1>",
             unsafe_allow_html=True,
         )
-        # ✅ NUEVO: Eslogan
+        # Eslogan
         st.markdown(
            "<p style='color:#0d47a1; margin-top:0; margin-bottom:5px; font-size:16px; font-weight:500;'>Gestión Rápida y Segura</p>",
             unsafe_allow_html=True,
         )
-        # ✅ NUEVO: Dirección
+        # Dirección
         st.markdown(
            "<p style='color:#64748B; margin-top:0; font-size:14px;'>📍 Machala - El Oro</p>",
             unsafe_allow_html=True,
         )
-
-        st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login_form"):
             usuario = st.text_input("Usuario", placeholder="Ingrese su usuario")
@@ -410,21 +429,21 @@ def mostrar_login():
 
 # ========================= PANEL PRINCIPAL =========================
 def mostrar_panel_principal():
-    # ✅ NUEVO: Título con hora actual
-    hora_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    
+    # Título con hora actual (hora de Ecuador)
+    hora_actual = hora_ecuador().strftime("%d/%m/%Y %H:%M:%S")
+
     col_titulo, col_hora = st.columns([3, 1])
     with col_titulo:
         st.title("💊 SaludPlus - Sistema de Gestión")
         st.write(f"👤 Bienvenido: **{st.session_state.usuario_actual}**")
     with col_hora:
         st.markdown(f"<p style='text-align:right; font-size:18px; font-weight:bold;'>🕐 {hora_actual}</p>", unsafe_allow_html=True)
-    
+
     if st.button("🚪 Cerrar Sesión"):
         st.session_state.autenticado = False
         st.rerun()
 
-    # ✅ NUEVO: Botón para actualizar inventario (en vez del cuadro)
+    # Botón para actualizar inventario (y refrescar la hora en pantalla)
     if st.button("🔄 Actualizar Inventario"):
         st.rerun()
 
@@ -459,6 +478,40 @@ def mostrar_panel_principal():
     with tab1:
         st.header("💊 Inventario de Medicamentos")
 
+        # ✅ NUEVO (restaurado): Agregar Nuevo Medicamento
+        with st.expander("➕ Agregar Nuevo Medicamento", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                cod_add = st.text_input("Código:", placeholder="M021", key="cod_add_inv")
+                nom_add = st.text_input("Nombre:", key="nom_add_inv")
+                cat_add = st.selectbox("Categoría:",
+                                        ["Analgésicos/Antiinflamatorios", "Antibióticos", "Gastrointestinales",
+                                         "Aseo e Higiene", "Vitaminas y Antialérgicos", "Otro"],
+                                        key="cat_add_inv")
+            with col2:
+                pre_add = st.number_input("Precio ($):", min_value=0.0, step=0.01, key="pre_add_inv")
+                sto_add = st.number_input("Stock:", min_value=1, step=1, key="sto_add_inv")
+                fec_add = st.text_input("Fecha de vencimiento (DD/MM/AAAA):", placeholder="10/12/2026", key="fec_add_inv")
+
+            if st.button("Agregar Medicamento", key="btn_add_inv"):
+                try:
+                    if not cod_add or not nom_add:
+                        raise ValueError("Código y nombre son obligatorios")
+                    if not fec_add.strip():
+                        raise ValueError("La fecha de vencimiento es obligatoria")
+                    datetime.strptime(fec_add.strip(), "%d/%m/%Y")  # valida el formato
+                    conn = conectar_db()
+                    conn.execute("INSERT INTO medicamentos VALUES (?,?,?,?,?,?,0)",
+                                 (cod_add.strip(), nom_add.strip(), pre_add, sto_add, fec_add.strip(), cat_add))
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ Medicamento agregado correctamente.")
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error("❌ Ya existe un medicamento con ese código")
+                except ValueError as e:
+                    st.error(f"❌ Error: la fecha debe tener el formato DD/MM/AAAA. Detalle: {e}")
+
         # Mostrar inventario por categorías
         st.markdown("### 📋 Inventario por Categorías")
         conn = conectar_db()
@@ -475,34 +528,31 @@ def mostrar_panel_principal():
                     with col_info:
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
-                        
-                        # ✅ Etiquetas de estado
+
+                        # Etiquetas de estado
                         estado, dias = verificar_vencimiento(m['fecha_vencimiento'])
-                        
+
                         etiquetas_html = ""
                         if m['stock'] == 1:
                             etiquetas_html += '<span class="etiqueta etiqueta-ultima">🔴 ÚLTIMA UNIDAD</span>'
                         elif m['stock'] <= 5:
                             etiquetas_html += f'<span class="etiqueta etiqueta-stock-bajo">⚠️ STOCK BAJO: {m["stock"]} unid.</span>'
-                        
+
                         if estado == "VENCIDO":
                             etiquetas_html += f'<span class="etiqueta etiqueta-vencido">❌ VENCIDO hace {abs(dias)} días</span>'
                         elif estado == "PROXIMO":
                             etiquetas_html += f'<span class="etiqueta etiqueta-proximo">⏰ Vence en {dias} días</span>'
                         else:
                             etiquetas_html += f'<span class="etiqueta etiqueta-ok">✅ Vence en {dias} días</span>'
-                        
+
                         if etiquetas_html:
                             st.markdown(etiquetas_html, unsafe_allow_html=True)
-                        
+
                         st.write(f"📅 Vencimiento: {m['fecha_vencimiento']}")
 
-                        # ✅ ELIMINADO: Botón de procesar vencido
-                        
                         if m['stock'] == 1:
                             st.warning("🔴 ÚLTIMA UNIDAD (no se vende, se mantiene como registro)")
 
-                        # ✅ SIGUE: Botón de eliminar definitivamente
                         if st.button("❌ Eliminar definitivamente", key=f"del_{m['codigo']}"):
                             conn.execute("DELETE FROM medicamentos WHERE codigo=?", (m['codigo'],))
                             conn.commit()
@@ -582,7 +632,7 @@ Sueldo base : ${u['sueldo']:.2f}
 ----------------------------------------
 Total a pagar: ${u['sueldo']:.2f}
 ========================================
-Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
 ========================================"""
                         st.markdown('<div class="factura">', unsafe_allow_html=True)
                         st.text(comprobante)
@@ -651,13 +701,13 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                     "Proveedor:",
                     [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in proveedores],
                     key="prov_compra")
-                
+
                 opciones_meds = []
                 for m in meds:
                     estado, _ = verificar_vencimiento(m['fecha_vencimiento'])
                     vencido = " (VENCIDO)" if (estado == "VENCIDO" or m['es_vencido'] == 1) else ""
                     opciones_meds.append(f"{m['codigo']} - {m['nombre']} | Stock: {m['stock']} | Vence: {m['fecha_vencimiento']}{vencido}")
-                
+
                 med_compra = st.selectbox(
                     "Medicamento recibido:",
                     opciones_meds,
@@ -678,7 +728,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                         (id_proveedor, codigo_medicamento, cantidad, valor_unitario, total, fecha)
                         VALUES (?,?,?,?,?,?)""",
                                  (id_prov, cod_med, cant_compra, val_compra, total_compra,
-                                  datetime.now().strftime('%d/%m/%Y %H:%M')))
+                                  hora_ecuador().strftime('%d/%m/%Y %H:%M')))
                     conn.commit()
 
                     p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
@@ -686,11 +736,11 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                     conn.close()
 
                     st.success(f"✅ Compra registrada! {msg_stock}")
-                    
+
                     info_fecha = f"Fecha vencimiento: {m['fecha_vencimiento']}"
                     if nueva_fecha:
-                        info_fecha += f" 🔄 (RENNOVADA, estaba vencido)"
-                    
+                        info_fecha += f" 🔄 (RENOVADA, estaba vencido)"
+
                     factura = f"""
 ========================================
 FACTURA DE COMPRA - SALUDPLUS
@@ -706,7 +756,7 @@ Valor unit.: ${val_compra:.2f}
 ----------------------------------------
 TOTAL A PAGAR: ${total_compra:.2f}
 ========================================
-Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
 ========================================"""
                     st.markdown('<div class="factura">', unsafe_allow_html=True)
                     st.text(factura)
@@ -758,7 +808,7 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                         total = vendida * med['precio']
                         conn.execute(
                             "INSERT INTO ventas (codigo_medicamento, cantidad, total, fecha) VALUES (?,?,?,?)",
-                            (med['codigo'], vendida, total, datetime.now().strftime('%d/%m/%Y %H:%M')))
+                            (med['codigo'], vendida, total, hora_ecuador().strftime('%d/%m/%Y %H:%M')))
                         conn.commit()
 
                         if "⚠️" in mensaje:
@@ -776,7 +826,7 @@ Precio unit. : ${med['precio']:.2f}
 ----------------------------------------
 Total a pagar: ${total:.2f}
 ========================================
-Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Fecha: {hora_ecuador().strftime('%d/%m/%Y %H:%M')}
 ========================================"""
                         st.markdown('<div class="factura">', unsafe_allow_html=True)
                         st.text(factura)
