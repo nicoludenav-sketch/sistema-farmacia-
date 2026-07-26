@@ -253,7 +253,7 @@ IMAGENES_MEDICAMENTOS = {
     "M003": "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=300&h=300&fit=crop",
     "M004": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=300&h=300&fit=crop",
     "M005": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop",
-    "M006": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTr4V9v3s-oSTvk52xDXzgWxfJ-fhdIBZQfPziTu9lT_QcdFSZZaxwudEk&s=10"w=300&h=300&fit=crop,
+    "M006": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTr4V9v3s-oSTvk52xDXzgWxfJ-fhdIBZQfPziTu9lT_QcdFSZZaxwudEk&s=10w=300&h=300&fit=crop",
     "M007": "https://images.unsplash.com/photo-1576602976047-174e57a47881?w=300&h=300&fit=crop",
     "M008": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=300&h=300&fit=crop",
     "M009": "https://images.unsplash.com/photo-1644303898977-26e4e6b76f5a?w=300&h=300&fit=crop",
