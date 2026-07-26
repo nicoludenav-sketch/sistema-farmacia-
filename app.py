@@ -526,7 +526,7 @@ def mostrar_panel_principal():
                     col_img, col_info = st.columns([1, 4])
                     with col_img:
                         img = IMAGENES_MEDICAMENTOS.get(m['codigo'], "https://cdn-icons-png.flaticon.com/512/2972/2972183.png")
-                        st.image(img, width=90)
+                        st.image(img, width=120)
                     with col_info:
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
