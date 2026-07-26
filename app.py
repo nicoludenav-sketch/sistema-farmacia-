@@ -178,6 +178,42 @@ def agregar_estilos():
     .stAlert p, .stAlert div {
         color: #0d47a1 !important;
     }
+
+    /* ETIQUETAS DE ESTADO EN PRODUCTOS */
+    .etiqueta {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: bold;
+        margin-right: 8px;
+        margin-top: 6px;
+    }
+    .etiqueta-stock-bajo {
+        background: #fff3cd;
+        color: #856404 !important;
+        border: 1px solid #ffeaa7;
+    }
+    .etiqueta-ultima {
+        background: #f8d7da;
+        color: #721c24 !important;
+        border: 1px solid #f5c6cb;
+    }
+    .etiqueta-vencido {
+        background: #f5c6cb;
+        color: #721c24 !important;
+        border: 1px solid #f1b0b7;
+    }
+    .etiqueta-proximo {
+        background: #ffeeba;
+        color: #856404 !important;
+        border: 1px solid #ffe08a;
+    }
+    .etiqueta-ok {
+        background: #d4edda;
+        color: #155724 !important;
+        border: 1px solid #c3e6cb;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -269,11 +305,8 @@ def reducir_stock_seguro(codigo, cantidad):
 def agregar_stock(codigo, cantidad):
     """
     Suma cantidad al stock existente.
-    
-    ✅ NUEVA LÓGICA:
-    - Si el producto ESTÁ VENCIDO: actualiza su fecha de vencimiento a 12 meses
-      a partir de hoy (para que el nuevo lote tenga fecha válida).
-    - Si el producto NO está vencido: mantiene su fecha original intacta.
+    - Si el producto ESTÁ VENCIDO: actualiza su fecha a 12 meses desde hoy.
+    - Si el producto NO está vencido: mantiene su fecha original.
     """
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
@@ -287,12 +320,10 @@ def agregar_stock(codigo, cantidad):
     stock_anterior = med['stock']
     nuevo_stock = stock_anterior + cantidad
     
-    # Verificar si el producto está vencido
     estado, _ = verificar_vencimiento(med['fecha_vencimiento'])
     esta_vencido = (estado == "VENCIDO") or (med['es_vencido'] == 1)
     
     if esta_vencido:
-        # ✅ SOLO si está vencido: actualizar fecha a 12 meses desde hoy
         nueva_fecha = (datetime.now() + timedelta(days=365)).strftime("%d/%m/%Y")
         conn.execute(
             "UPDATE medicamentos SET stock=?, es_vencido=0, fecha_vencimiento=? WHERE codigo=?",
@@ -302,7 +333,6 @@ def agregar_stock(codigo, cantidad):
         conn.close()
         return True, f"✅ Stock actualizado: {stock_anterior} → {nuevo_stock} unidades. Fecha renovada a {nueva_fecha} (producto estaba vencido)", nueva_fecha
     else:
-        # ❌ No está vencido: mantener fecha original
         conn.execute(
             "UPDATE medicamentos SET stock=?, es_vencido=0 WHERE codigo=?",
             (nuevo_stock, codigo)
@@ -472,10 +502,31 @@ def mostrar_panel_principal():
                     with col_info:
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
+                        
+                        # ✅ NUEVO: Calcular estado y días de vencimiento
+                        estado, dias = verificar_vencimiento(m['fecha_vencimiento'])
+                        
+                        # ✅ NUEVO: Etiquetas de STOCK
+                        etiquetas_html = ""
+                        if m['stock'] == 1:
+                            etiquetas_html += '<span class="etiqueta etiqueta-ultima">🔴 ÚLTIMA UNIDAD</span>'
+                        elif m['stock'] <= 5:
+                            etiquetas_html += f'<span class="etiqueta etiqueta-stock-bajo">⚠️ STOCK BAJO: {m["stock"]} unid.</span>'
+                        
+                        # ✅ NUEVO: Etiquetas de VENCIMIENTO con días
+                        if estado == "VENCIDO":
+                            etiquetas_html += f'<span class="etiqueta etiqueta-vencido">❌ VENCIDO hace {abs(dias)} días</span>'
+                        elif estado == "PROXIMO":
+                            etiquetas_html += f'<span class="etiqueta etiqueta-proximo">⏰ Vence en {dias} días</span>'
+                        else:
+                            etiquetas_html += f'<span class="etiqueta etiqueta-ok">✅ Vence en {dias} días</span>'
+                        
+                        if etiquetas_html:
+                            st.markdown(etiquetas_html, unsafe_allow_html=True)
+                        
                         st.write(f"📅 Vencimiento: {m['fecha_vencimiento']}")
 
-                        est, _ = verificar_vencimiento(m['fecha_vencimiento'])
-                        if est == "VENCIDO" and m['es_vencido'] == 0:
+                        if estado == "VENCIDO" and m['es_vencido'] == 0:
                             st.error(f"❌ VENCIDO el {m['fecha_vencimiento']}")
                             if st.button("🗑️ Procesar vencido (dejar 1 unidad)", key=f"venc_{m['codigo']}"):
                                 nueva_fecha = procesar_producto_vencido(m['codigo'], m['fecha_vencimiento'])
@@ -636,7 +687,6 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                     [f"{p['id_proveedor']} - {p['nombre']} ({p['empresa']})" for p in proveedores],
                     key="prov_compra")
                 
-                # Mostrar información del medicamento seleccionado
                 opciones_meds = []
                 for m in meds:
                     estado, _ = verificar_vencimiento(m['fecha_vencimiento'])
@@ -656,10 +706,8 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 cod_med = med_compra.split(" - ")[0]
                 total_compra = cant_compra * val_compra
 
-                # 1. Actualizar stock (y fecha SOLO si está vencido)
                 exito, msg_stock, nueva_fecha = agregar_stock(cod_med, cant_compra)
                 if exito:
-                    # 2. Registrar la compra
                     conn = conectar_db()
                     conn.execute("""INSERT INTO compras_proveedores
                         (id_proveedor, codigo_medicamento, cantidad, valor_unitario, total, fecha)
@@ -668,14 +716,12 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                                   datetime.now().strftime('%d/%m/%Y %H:%M')))
                     conn.commit()
 
-                    # 3. Obtener datos para la factura
                     p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
                     m = conn.execute("SELECT nombre, fecha_vencimiento FROM medicamentos WHERE codigo=?", (cod_med,)).fetchone()
                     conn.close()
 
                     st.success(f"✅ Compra registrada! {msg_stock}")
                     
-                    # Mostrar en la factura si se renovó la fecha
                     info_fecha = f"Fecha vencimiento: {m['fecha_vencimiento']}"
                     if nueva_fecha:
                         info_fecha += f" 🔄 (RENNOVADA, estaba vencido)"
