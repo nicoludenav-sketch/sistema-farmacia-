@@ -248,15 +248,15 @@ agregar_estilos()
 LOGO_SALUDPLUS = "logo_farmacia.png"
 
 IMAGENES_MEDICAMENTOS = {
-    "M001": "https://farmaenlace.vtexassets.com/arquivos/ids/180844/08642-1.jpg?v=638973636616370000&w=300&h=300&fit=crop",
-    "M002": "https://www.farmaciasmedicity.com/ibuprofeno-genfar-tabletas-recubiertas-con-100-unidades/p?srsltid=AfmBOop_YBOShvum9F-cnXtnG57kHz36-Yw9uCu17uzBhb6grfXicIF7&w=300&h=300&fit=crop",
-    "M003": "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=300&h=300&fit=crop",
-    "M004": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=300&h=300&fit=crop",
-    "M005": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop",
+    "M001": "https://www.pharmedic-sa.com/wp-content/uploads/Paracetamol-scaled-570x570.jpg&w=300&h=300&fit=crop",
+    "M002": "https://farmaenlace.vtexassets.com/arquivos/ids/180844/08642-1.jpg?v=638973636616370000&w=300&h=300&fit=crop",
+    "M003": "https://farmaenlace.vtexassets.com/arquivos/ids/172034/06218-1.jpg?v=638386895440700000&w=300&h=300&fit=crop",
+    "M004": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLJNpiIrllCsLYbYrFh906IXSSlXuUKHJaKPZ5iYRZPw&s=10&w=300&h=300&fit=crop",
+    "M005": "https://ecuaquimica.com.ec/wp-content/uploads/2024/12/3056.jpeg&w=300&h=300&fit=crop",
     "M006": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTr4V9v3s-oSTvk52xDXzgWxfJ-fhdIBZQfPziTu9lT_QcdFSZZaxwudEk&s=10&w=300&h=300&fit=crop",
-    "M007": "https://images.unsplash.com/photo-1576602976047-174e57a47881?w=300&h=300&fit=crop",
-    "M008": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=300&h=300&fit=crop",
-    "M009": "https://images.unsplash.com/photo-1644303898977-26e4e6b76f5a?w=300&h=300&fit=crop",
+    "M007": "https://nomenclator.org/img/envase.900/azitromicina-sandoz-250-mg-polvo.1.jpg&w=300&h=300&fit=crop",
+    "M008": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQrdG-317Q8aAc0_10bO59sjq3WODg0Qs4GzalPWBDtdUTnczubuL5TwUA&s=10&w=300&h=300&fit=crop",
+    "M009": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRXc7zIV5MUROJwokhByL9EFoR42VggAC-9fMvqAbbomA&s=10&w=300&h=300&fit=crop",
     "M010": "https://images.unsplash.com/photo-1626716498378-61471b5f2d43?w=300&h=300&fit=crop",
     "M011": "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=300&h=300&fit=crop",
     "M012": "https://images.unsplash.com/photo-1571772996211-2f02c9727629?w=300&h=300&fit=crop",
@@ -526,7 +526,7 @@ def mostrar_panel_principal():
                     col_img, col_info = st.columns([1, 4])
                     with col_img:
                         img = IMAGENES_MEDICAMENTOS.get(m['codigo'], "https://cdn-icons-png.flaticon.com/512/2972/2972183.png")
-                        st.image(img, width=120)
+                        st.image(img, width=140)
                     with col_info:
                         st.markdown(f"**{m['nombre']}**")
                         st.code(f"{m['codigo']} | {m['nombre']} | ${m['precio']:.2f} | Stock: {m['stock']}")
