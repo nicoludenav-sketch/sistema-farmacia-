@@ -107,64 +107,76 @@ crear_tablas()
 inicializar_datos()
 
 
-# ========================= ESTILOS =========================
+# ========================= ESTILOS MEJORADOS =========================
 def agregar_estilos():
     st.markdown("""
     <style>
-.stApp{
-    background:#F5F7FA;
-}
+    /* FONDO NARANJA SUAVE */
+    .stApp {
+        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 50%, #ffcc80 100%);
+        background-attachment: fixed;
+    }
 
-.block-container{
-    padding-top:2rem;
-    padding-bottom:2rem;
-}
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
 
-[data-testid="stSidebar"]{
-    background:#FFFFFF;
-}
+    /* TEXTOS: AZUL MARINO OSCURO PARA BUEN CONTRASTE */
+    .stApp, p, span, label, .stMarkdown, .stCode, li, div {
+        color: #0d47a1 !important;
+    }
 
-h1,h2,h3{
-    color:#1E293B;
-    font-weight:700;
-}
+    /* TÍTULOS MÁS OSCUROS Y DESTACADOS */
+    h1, h2, h3, h4, h5, h6 {
+        color: #0d47a1 !important;
+        font-weight: 700 !important;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.9);
+    }
 
-.stTextInput input,
-.stNumberInput input,
-.stSelectbox div[data-baseweb="select"]{
-    border-radius:10px;
-}
+    /* CONTENEDORES BLANCOS SEMI-TRANSPARENTES */
+    .stExpander, .stAlert, [data-testid="stForm"],
+    .stTextInput > div, .stNumberInput > div, .stSelectbox > div {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 12px;
+    }
 
-.stButton > button{
-    width:100%;
-    height:45px;
-    border-radius:10px;
-    background:#2563EB !important;
-    color:white !important;
-    font-weight:bold;
-    border:none;
-    transition:0.3s;
-}
+    /* INPUTS CON LETRA OSCURA */
+    .stTextInput input, .stNumberInput input, .stSelectbox input {
+        color: #0d47a1 !important;
+        border-radius: 10px;
+    }
 
-.stButton > button:hover{
-    background:#1D4ED8 !important;
-    transform:translateY(-2px);
-    box-shadow:0 5px 12px rgba(0,0,0,.15);
-}
+    /* BOTONES AZULES QUE CONTRASTAN CON NARANJA */
+    .stButton > button {
+        width: 100%;
+        height: 45px;
+        border-radius: 10px;
+        background: #1976d2 !important;
+        color: white !important;
+        font-weight: bold;
+        border: none;
+        transition: 0.3s;
+    }
 
-.factura{
-    background:white;
-    padding:20px;
-    border-radius:12px;
-    border:1px solid #E2E8F0;
-    font-family:monospace;
-}
+    .stButton > button:hover {
+        background: #0d47a1 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 12px rgba(25, 118, 210, 0.4);
+    }
+
+    /* FACTURAS */
     .factura {
         background: white;
         padding: 20px;
         border-radius: 10px;
         border: 2px dashed #1976d2;
         font-family: monospace;
+    }
+
+    /* ALERTAS: ASEGURAR LETRA LEGIBLE */
+    .stAlert p, .stAlert div {
+        color: #0d47a1 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -214,12 +226,8 @@ def verificar_vencimiento(fecha_str):
 
 def procesar_producto_vencido(codigo, fecha_original):
     """
-    Se ejecuta cuando se presiona 'Procesar vencido (dejar 1 unidad)'.
     Deja 1 unidad como registro y ajusta la fecha de vencimiento a
-    60 días ANTES de la fecha original, para todos los productos que
-    se vayan venciendo (no solo el actual). Este ajuste queda guardado
-    como referencia histórica; el flag es_vencido=1 es lo que evita que
-    el producto se siga mostrando como "VENCIDO" activo en el inventario.
+    60 días ANTES de la fecha original.
     """
     conn = conectar_db()
     fecha_original_dt = datetime.strptime(fecha_original, "%d/%m/%Y")
@@ -259,7 +267,7 @@ def reducir_stock_seguro(codigo, cantidad):
 
 
 def agregar_stock(codigo, cantidad):
-    """Función NUEVA: suma cantidad al stock existente"""
+    """Suma cantidad al stock existente"""
     conn = conectar_db()
     med = conn.execute("SELECT * FROM medicamentos WHERE codigo=?", (codigo,)).fetchone()
     if not med:
@@ -283,11 +291,9 @@ if 'autenticado' not in st.session_state:
 
 
 def mostrar_login():
-    # Centrar el formulario
     col1, col2, col3 = st.columns([1, 1.2, 1])
 
     with col2:
-
         st.markdown(
             """
             <div style="
@@ -301,58 +307,32 @@ def mostrar_login():
             unsafe_allow_html=True,
         )
 
-                # Logo centrado
         col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
-
         with col_logo2:
-            st.image(
-                "https://cdn-icons-png.flaticon.com/512/4320/4320337.png",
-                width=120,
-        )
+            st.image("https://cdn-icons-png.flaticon.com/512/4320/4320337.png", width=120)
 
         st.markdown(
-           "<h2 style='color:#2563EB; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
+           "<h2 style='color:#1976d2; margin-bottom:0;'>Sistema de Gestión Farmacéutica</h2>",
             unsafe_allow_html=True,
         )
-
         st.markdown(
-           "<p style='color:#64748B; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
+           "<p style='color:#0d47a1; margin-top:5px;'>Control de inventario, ventas y proveedores</p>",
             unsafe_allow_html=True,
         )
-
         st.markdown("<br>", unsafe_allow_html=True)
 
         with st.form("login_form"):
-
-            usuario = st.text_input(
-                "Usuario",
-                placeholder="Ingrese su usuario"
-            )
-
-            contrasena = st.text_input(
-                "Contraseña",
-                type="password",
-                placeholder="Ingrese su contraseña"
-            )
-
+            usuario = st.text_input("Usuario", placeholder="Ingrese su usuario")
+            contrasena = st.text_input("Contraseña", type="password", placeholder="Ingrese su contraseña")
             st.markdown("<br>", unsafe_allow_html=True)
-
-            ingresar = st.form_submit_button(
-                "Iniciar sesión",
-                use_container_width=True
-            )
+            ingresar = st.form_submit_button("Iniciar sesión", use_container_width=True)
 
             if ingresar:
-
                 if usuario == "sistema" and contrasena == "12341":
-
                     st.session_state.autenticado = True
                     st.session_state.usuario_actual = "Administrador"
-
                     st.rerun()
-
                 else:
-
                     st.error("Usuario o contraseña incorrectos.")
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -360,7 +340,7 @@ def mostrar_login():
 # ========================= PANEL PRINCIPAL =========================
 def mostrar_panel_principal():
     st.title("🧪 Sistema de Gestión de Farmacia")
-    st.write(f"👤 Bienvenido: {st.session_state.usuario_actual}")
+    st.write(f"👤 Bienvenido: **{st.session_state.usuario_actual}**")
     if st.button("🚪 Cerrar Sesión"):
         st.session_state.autenticado = False
         st.rerun()
@@ -640,10 +620,8 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 cod_med = med_compra.split(" - ")[0]
                 total_compra = cant_compra * val_compra
 
-                # 1. Actualizar stock
                 exito, msg_stock = agregar_stock(cod_med, cant_compra)
                 if exito:
-                    # 2. Registrar la compra
                     conn = conectar_db()
                     conn.execute("""INSERT INTO compras_proveedores
                         (id_proveedor, codigo_medicamento, cantidad, valor_unitario, total, fecha)
@@ -652,7 +630,6 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
                                   datetime.now().strftime('%d/%m/%Y %H:%M')))
                     conn.commit()
 
-                    # 3. Obtener datos para la factura
                     p = conn.execute("SELECT * FROM proveedores WHERE id_proveedor=?", (id_prov,)).fetchone()
                     m = conn.execute("SELECT nombre FROM medicamentos WHERE codigo=?", (cod_med,)).fetchone()
                     conn.close()
